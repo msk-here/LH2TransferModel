@@ -13,7 +13,7 @@ dateandtime=string(datetime('now','Format','MMddyy''-''HHmm'));
 
 %% OPTIONS
 
-Case=2;     % '1' for running original case and parameters,
+Case=5;     % '1' for running original case and parameters,
             % '2' for running trailer to main tank by pressure difference
             % '3' for running trailer to main tank by transfer pump
             % '4' for running main tank to on-board tank by pressure increment
@@ -29,21 +29,21 @@ Topfill=0;  % '0' for simulating a bottom fill process.
 odesolver= 1;   % '1' for using ode45. More accurate, more computing time. Might crash if system is stiff. 
                 % '2' for using ode15s. For stiff systems.
 
-SavePlots=1;    % '0' for not saving plots.
+SavePlots=0;    % '0' for not saving plots.
                 % '1' for saving plots as .png.
-                PlotsPath="C:\Users\alber\OneDrive - UC Irvine\APEP\Heavy-Duty Refuelling\Results\Transfer model\"; % important: final slash required
+                PlotsPath="results\"; % final slash required
 
-SaveResults=1;  % '0' for not saving workspace.
+SaveResults=0;  % '0' for not saving workspace.
                 % '1' for saving "LH2Model" and "Simulation" variables.
-                ResultsPath="C:\Users\alber\Documents\UCI\Matlab Simulations\"; % important: final slash required
+                ResultsPath="results\"; % final slash required
 
 WriteXlsTxt=0;  % '0' for not writing main results at .cvs and .txt file.
                 % '1' for creating a .xls and .txt file with main results.
-                XlsTxtPath="C:\Users\alber\OneDrive - UC Irvine\APEP\Heavy-Duty Refuelling\Results\Transfer model\"; % important: final slash required
+                XlsTxtPath="results\"; % final slash required
 
-UpdateLog=1;    % '0' for not writing main results to log file.
+UpdateLog=0;    % '0' for not writing main results to log file.
                 % '1' for updating .xls log file with main results.
-                LogPath="C:\Users\alber\OneDrive - UC Irvine\APEP\Heavy-Duty Refuelling\Results\Transfer model\"; % important: final slash required
+                LogPath="results\"; % final slash required
 
 PCShutdown=0;   % '1' for shutting down the computer once the simulation and data extraction has finished.
               
