@@ -156,6 +156,9 @@ function updatewaitbar(h,progress,message)
 
     % 2.2 - Calculate the estimated time remaining
         sec_remain = elap*(1/progress-1);
+        if ~isfinite(sec_remain) || sec_remain < 0
+            sec_remain = 0;   % progress==0 -> 1/0; no estimate available yet
+        end
         e_mes = datestr(elap/86400,'HH:MM:SS');
         r_mes = datestr(sec_remain/86400,'HH:MM:SS');
 
