@@ -1,3 +1,24 @@
+> **Fork note — CoolProp instead of REFPROP**
+>
+> This is a fork of [Albert-Gil/LH2TransferModel](https://github.com/Albert-Gil/LH2TransferModel),
+> the model published in Gil-Esmendia, Flores & Brouwer, *"Modeling and improving liquid
+> hydrogen transfer processes"*, Applied Energy **390** (2025) 125779.
+>
+> The only substantive change is the thermodynamic property backend: the proprietary
+> REFPROP dependency has been replaced with a drop-in `refpropm.m` shim backed by
+> [CoolProp](http://www.coolprop.org/), so the model runs **without a REFPROP licence**.
+> The physical model, the ODE system and all 186 property call sites are unmodified.
+>
+> **Requirements:** MATLAB with a configured Python environment (`pyenv`), and CoolProp
+> (`py -m pip install CoolProp`).
+>
+> **Before running:** execute `validate_shim.m`. It runs 42 checks on the property shim
+> and must report all passed. A mis-mapped property code produces plausible-looking but
+> wrong results.
+>
+> See [`SHIM_NOTES.md`](SHIM_NOTES.md) for verification details.
+>
+> Upstream licence (GPL-3.0) is unchanged and applies to this fork.
 
 # LH₂ Transfer Model
 
