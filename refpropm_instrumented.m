@@ -1,4 +1,175 @@
 function varargout = refpropm(prop, spec1, value1, spec2, value2, varargin)
+%REFPROPM  CoolProp shim - INSTRUMENTED BUILD (validation runs only).
+%
+%   Functionally identical to the production refpropm.m - INCLUDING the
+%   saturation-boundary phase resolution and the '|liquid' / '|gas' phase
+%   hint - but records every call and every failure so a run can be
+%   audited afterwards.
+%
+%   Exists to answer a question a completed run cannot answer on its own:
+%   did any property call FAIL and get swallowed by one of the upstream
+%   try/catch blocks in LH2Simulate_Pump.m (lines 184-197, 254-267,
+%   659-665, 1120-1131)? Those catches substitute fallback values
+%   silently, so a model can run to completion, or merely appear slow,
+%   while thousands of property calls fail invisibly.
+%
+%   USAGE
+%       refpropm('log','on',    0,'',0,'');   % start logging (clears counters)
+%       ... run MAIN ...
+%       refpropm('log','report',0,'',0,'');   % print summary
+%       refpropm('log','save',  0,'',0,'');   % write refpropm_log.mat
+%       refpropm('log','off',   0,'',0,'');   % stop
+%
+%   Logging is OFF by default, so this file behaves exactly like the
+%   production shim if you forget to enable it. It is slower than the
+%   production build - restore refpropm.m afterwards.
+
+persistent LOGGING CALLS FAILS NCALL NFAIL EXTREMA
+
+% MAIN.m line 10 is "clear all", which clears functions from memory and so
+% resets every persistent variable here. The logging flag is therefore ALSO
+% kept in root application data, which "clear all" does not touch. If the
+% persistents have been wiped, recover the request and re-initialise the
+% counters. All property calls of interest happen after the clear, so
+% nothing is lost by re-initialising at this point.
+if isempty(LOGGING)
+    if isappdata(0,'refpropm_logging') && getappdata(0,'refpropm_logging')
+        LOGGING = true;
+        CALLS = cell(0,1); FAILS = cell(0,1);
+        NCALL = containers.Map('KeyType','char','ValueType','double');
+        NFAIL = containers.Map('KeyType','char','ValueType','double');
+        EXTREMA = containers.Map('KeyType','char','ValueType','any');
+    else
+        LOGGING = false;
+    end
+end
+
+%% ------------------------------------------------------------------ %%
+%% Logging control interface
+%% ------------------------------------------------------------------ %%
+if strcmpi(prop,'log')
+    switch lower(spec1)
+        case 'on'
+            LOGGING = true;
+            setappdata(0,'refpropm_logging',true);   % survives "clear all"
+            CALLS = cell(0,1); FAILS = cell(0,1);
+            NCALL = containers.Map('KeyType','char','ValueType','double');
+            NFAIL = containers.Map('KeyType','char','ValueType','double');
+            EXTREMA = containers.Map('KeyType','char','ValueType','any');
+            fprintf('[refpropm] logging ON (survives the clear all in MAIN.m)\n');
+        case 'off'
+            LOGGING = false;
+            setappdata(0,'refpropm_logging',false);
+            fprintf('[refpropm] logging OFF\n');
+        case 'report'
+            local_report(NCALL, NFAIL, FAILS, EXTREMA);
+        case 'save'
+            log.calls = CALLS; log.fails = FAILS;
+            log.ncall = NCALL; log.nfail = NFAIL; log.extrema = EXTREMA;
+            save('refpropm_log.mat','log');
+            fprintf('[refpropm] wrote refpropm_log.mat\n');
+        otherwise
+            error('refpropm:badLogCmd','Unknown log command ''%s''.', spec1);
+    end
+    if nargout > 0, varargout{1} = []; end
+    return
+end
+
+%% ------------------------------------------------------------------ %%
+%% Normal operation
+%% ------------------------------------------------------------------ %%
+key = sprintf('%s(%s,%s)', lower(prop), lower(strtrim(spec1)), lower(strtrim(spec2)));
+
+if LOGGING
+    if ~isKey(NCALL,key), NCALL(key) = 0; end
+    NCALL(key) = NCALL(key) + 1;
+    local_track(EXTREMA, lower(strtrim(spec1)), value1);
+    local_track(EXTREMA, lower(strtrim(spec2)), value2);
+end
+
+try
+    [varargout{1:max(nargout,1)}] = local_core(prop, spec1, value1, spec2, value2, varargin{:});
+catch ME
+    if LOGGING
+        if ~isKey(NFAIL,key), NFAIL(key) = 0; end
+        NFAIL(key) = NFAIL(key) + 1;
+        FAILS{end+1,1} = struct('key',key,'prop',prop, ...
+            'spec1',spec1,'value1',value1,'spec2',spec2,'value2',value2, ...
+            'fluid',varargin{1},'msg',ME.message);
+    end
+    rethrow(ME);
+end
+end
+
+
+%% ==================================================================== %%
+function local_track(EXTREMA, spec, val)
+if ~isnumeric(val) || ~isscalar(val) || ~isfinite(val), return; end
+if ~isKey(EXTREMA,spec)
+    EXTREMA(spec) = [val val];
+else
+    e = EXTREMA(spec);
+    EXTREMA(spec) = [min(e(1),val) max(e(2),val)];
+end
+end
+
+
+%% ==================================================================== %%
+function local_report(NCALL, NFAIL, FAILS, EXTREMA)
+fprintf('\n=====================================================\n');
+fprintf(' refpropm call audit\n');
+fprintf('=====================================================\n');
+if isempty(NCALL) || NCALL.Count == 0
+    fprintf(' No calls recorded.\n\n');
+    if isappdata(0,'refpropm_logging') && getappdata(0,'refpropm_logging')
+        fprintf('  Logging IS enabled, but no property calls have been seen\n');
+        fprintf('  since it was switched on. Did the run actually execute?\n');
+    else
+        fprintf('  Logging was not enabled when the run executed.\n');
+        fprintf('  Switch it on with:  refpropm(''log'',''on'',0,'''',0,'''');\n');
+    end
+    fprintf('=====================================================\n');
+    return
+end
+k = keys(NCALL); tot = 0; totf = 0;
+fprintf('\n%-22s %12s %10s\n','call shape','calls','FAILURES');
+for i = 1:numel(k)
+    n = NCALL(k{i});
+    f = 0; if isKey(NFAIL,k{i}), f = NFAIL(k{i}); end
+    tot = tot + n; totf = totf + f;
+    flag = ''; if f > 0, flag = '   <-- FAILED'; end
+    fprintf('%-22s %12d %10d%s\n', k{i}, n, f, flag);
+end
+fprintf('%-22s %12d %10d\n','TOTAL',tot,totf);
+
+fprintf('\nInput ranges actually requested:\n');
+ek = keys(EXTREMA);
+for i = 1:numel(ek)
+    e = EXTREMA(ek{i});
+    fprintf('   %-4s  %14.6g  ..  %14.6g\n', ek{i}, e(1), e(2));
+end
+
+if totf == 0
+    fprintf('\n  RESULT: zero property-call failures across %d calls.\n', tot);
+    fprintf('  No upstream try/catch block was triggered by a CoolProp failure.\n');
+else
+    fprintf('\n  RESULT: %d FAILURES. First few:\n', totf);
+    for i = 1:min(10,numel(FAILS))
+        f = FAILS{i};
+        fprintf('   %s at %s=%.8g, %s=%.8g (%s)\n     %s\n', ...
+            f.key, f.spec1, f.value1, f.spec2, f.value2, f.fluid, f.msg);
+    end
+    fprintf('\n  These were swallowed by upstream try/catch blocks if the run\n');
+    fprintf('  completed. Results are NOT trustworthy until each is explained.\n');
+end
+fprintf('=====================================================\n');
+end
+
+
+%% ==================================================================== %%
+%% Core = the production shim, unchanged (incl. saturation phase fix)
+%% ==================================================================== %%
+function varargout = local_core(prop, spec1, value1, spec2, value2, varargin)
 %REFPROPM  Drop-in CoolProp replacement for the NIST REFPROP MATLAB wrapper.
 %
 %   Implements the subset of refpropm.m needed by the LH2 transfer model
@@ -127,7 +298,7 @@ for i = 1:max(nargout,1)
     varargout{i} = val;
 end
 
-end % refpropm
+end % local_core
 
 
 %% ==================================================================== %%

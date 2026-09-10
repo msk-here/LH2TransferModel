@@ -413,13 +413,18 @@ function dxdt = LH2dxdt(P,t,x)
     %---------------------
     % vaporizer in (ST)
     %---------------------
-    % With transfer pump, no vaporization is needed
-        Jvap=0;
-        Jboil0=0;
-        Jboil=0;
-        dJboildt=0;
-        dmVapdt=0;
-        P.VapValveState=0;
+    % vaporizer holds tank 1 above p_ST_min (article sect. 3.2).
+    Jvap = max(0,P.c_vap*U.lambdaV*dsqrt(2*rho_L1*(pTotal1-P.p_atm)));
+    if mVap<=0
+        Jboil0 = 0;
+        Jboil = max(0,Jboil);
+        dmVapdt = max(0,Jvap - Jboil);
+    else
+        Jboil0 = Jvap;
+        dmVapdt = Jvap - Jboil;
+    end
+    dJboildt = (Jboil0 - Jboil)/P.tau_vap;
+    P.VapValveState = U.lambdaV;
     
     % determine ST vent valve state
     P.STVentState = U.STVentState;% store STVentState value for next iteration
@@ -647,8 +652,8 @@ function dxdt = LH2dxdt(P,t,x)
     %---------------------    
     % mass balances (ST) and (ET)
     %---------------------
-    Jv1 = - Jvvalve1 - Jcd1 + Jevap1;                      % variation of mass of vapor in (ST)
-    JL1 = -Jtr + Jcd1 - Jevap1;                                  % variation of mass of liquid in (ST) (no vaporizer)
+    Jv1 = Jboil - Jvvalve1 - Jcd1 + Jevap1;                      % variation of mass of vapor in (ST)
+    JL1 = -Jtr - Jvap + Jcd1 - Jevap1;                           % variation of mass of liquid in (ST)
         
     Jv2 = (ratio_top_bottom) * Jtr  - Jvvalve2 - Jcd2 + Jevap2; % variation of mass of vapor in (ET)
     JL2 = (1-ratio_top_bottom) * Jtr + Jcd2 - Jevap2;         % variation of mass of liquid in (ET)
@@ -657,8 +662,8 @@ function dxdt = LH2dxdt(P,t,x)
     % Heat gains at the pump
     %---------------------
     try
-        str_L= refpropm('S','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD');
-        htr_L= refpropm('H','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD');
+        str_L= refpropm('S','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD|liquid');
+        htr_L= refpropm('H','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD|liquid');
     catch
         str_L=refpropm('S','T',TL1(P.nL1),'Q',0,'PARAHYD');
         htr_L=refpropm('H','T',TL1(P.nL1),'Q',0,'PARAHYD');
@@ -840,11 +845,11 @@ function dxdt = LH2dxdt(P,t,x)
     CCC = pdV1;
     DDD = Jvvalve1*(hvalve1+0.5*vv1^2);
     EEE =  - Jcd1*hcd1;
-    FFF = 0; % Jboil is deactivated
+    FFF = Jboil*hboil;
     GGG = - QdotLS1;
     HHH = - Jtr*htr_L+0.5*vtr^2;
     III = + Jcd1*hcd1 ;
-    JJJ = 0; % Jvap is deactivated
+    JJJ = - Jvap*htr_L;
     KKK = QdotV1 ;
     LLL = QdotL1 ;
     
