@@ -139,11 +139,13 @@ LH2Model.PumpMassTransferFast=30*kgminTokgsec;      % [kg/s] H2 mass transfer be
 LH2Model.PumpMassTransferSlow=15*kgminTokgsec;      % [kg/s] H2 mass transfer being pumped at "Slow" mode
 LH2Model.PumpHeatCond=30;                           % [W] Estimated conducted Heat Rate at the pump 
 LH2Model.PumpHeatGain=650;                          % [W/1000kghr] Estimated Heat gain due to pump inefficiencies (mesured @1000 kg/hr flowrate)
+LH2Model.PumpIsenEff=0.7;
 
 % Pressure settings
 LH2Model.p_ST_low = 7*barToPa;        % [Pa] ST vent valve lower pressure threshold (= PRD hysteresis pressure)
 LH2Model.p_ST_high = 8*barToPa;     % [Pa] ET vent valve upper pressure threshold (= PRD set pressure)
 LH2Model.p_ST_final = 7*barToPa;      % [Pa] final venting pressure for (ST) (= pressure in the trailer before leaving the station)
+LH2Model.p_ST_min = 1.2*barToPa;   % [Pa] minimum allowable tank 1 pressure (article sect. 3.2)
 
 LH2Model.p_ET_low = 9*barToPa;        % [Pa] ET vent valve lower pressure threshold (= PRD hysteresis pressure)
 LH2Model.p_ET_high = 10*barToPa;       % [Pa] ET vent valve upper pressure threshold (= PRD set pressure) 

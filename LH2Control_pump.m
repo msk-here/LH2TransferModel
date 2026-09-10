@@ -15,22 +15,22 @@ U.ETVentState = ETTVentState;
 if hL2 < 0.15*P.H
 	% slow fill
 	U.lambdaE = P.PumpMassTransferSlow/P.PumpMassTransferFast*(1-ET_fill_complete);
-	U.lambdaV = 0;
+	U.lambdaV = getVaporizerValveState(P,p1,P.p_ST_min);
 	U.STVentState = getSTVentState(P,p1);
 elseif hL2 < 0.70*P.H
 	% fast fill
 	U.lambdaE = 1*(1-ET_fill_complete);
-	U.lambdaV = 0;
+	U.lambdaV = getVaporizerValveState(P,p1,P.p_ST_min);
 	U.STVentState = getSTVentState(P,p1);
 elseif hL2 < 0.85*P.H
 	% reduced fast fill
 	U.lambdaE = 0.8*(1-ET_fill_complete);
-	U.lambdaV = 0;
+	U.lambdaV = getVaporizerValveState(P,p1,P.p_ST_min);
 	U.STVentState = ET_fill_complete * (p1 > P.p_ST_final);
 else 
 % topping
 	U.lambdaE = P.PumpMassTransferSlow/P.PumpMassTransferFast*0.8*(1-ET_fill_complete);
-    U.lambdaV = 0;
+    U.lambdaV = getVaporizerValveState(P,p1,P.p_ST_min);
 	U.STVentState = ET_fill_complete*(1-ST_vent_complete);
     
 end
@@ -86,3 +86,15 @@ else
 	state = P.ETVentState;
 end
 
+    function state = getVaporizerValveState(P,p1,pSet)
+        % goal is to provide enough flow to maintain p1 at pSet
+        % so open depending on pressure difference
+        if p1<pSet-0.02*pSet
+        	state = max(0,10*(pSet-p1)/pSet);
+        	state = min(1,state);
+        elseif p1>pSet+0.02*pSet
+        	state = 0;
+        else
+        	state = P.VapValveState;
+        end
+  

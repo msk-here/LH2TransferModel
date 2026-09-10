@@ -143,6 +143,7 @@ LH2Model.PumpHeatGain=650;                          % [W/1000kghr] Estimated Hea
 LH2Model.p_ST_low = 11*barToPa;        % [Pa] ST vent valve lower pressure threshold (= PRD hysteresis pressure)
 LH2Model.p_ST_high = 12*barToPa;     % [Pa] ET vent valve upper pressure threshold (= PRD set pressure)
 LH2Model.p_ST_final = 10*barToPa;      % [Pa] final venting pressure for (ST) (= pressure in the trailer before leaving the station)
+LH2Model.p_ST_min = 1.2*barToPa;   % [Pa] minimum allowable tank 1 pressure (article sect. 3.2)
 
 LH2Model.p_ET_low = 5.5*barToPa;        % [Pa] ET vent valve lower pressure threshold (= PRD hysteresis pressure)
 LH2Model.p_ET_high = 6.5*barToPa;      % [Pa] ET vent valve upper pressure threshold (= PRD set pressure) 
