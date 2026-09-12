@@ -130,7 +130,16 @@ LH2Model.p_ET_final = 45*psiToPa;      % [Pa] final venting pressure for (ET) (=
 
 
 LH2Model.TopET = 0.9;                  % [] maximum fraction full for ET, when fill stops. Value should be between 0 and 1 (0.9 = 90%)
-LH2Model.ratio_top_bottom=0.01;        % ratio between top and bottom fill to (ET). 0.5 = 50% of liquid goes to top. Values between 0.01 and 0.03 are best...
+if Topfill
+    LH2Model.ETinletdiameter = 0.02;
+    LH2Model.ETnozzleamout = 1;
+    LH2Model.ConvCoeffTopfill = 7000;
+    LH2Model.initial_ratio_top_bottom = 0.01;
+else
+    LH2Model.initial_ratio_top_bottom = 0;
+    LH2Model.ConvCoeffTopfill = 0;
+    LH2Model.bulkevap_ratio_top_bottom = 0;
+end
 
 % Solver options
 if HydrogenTransfer==0      % If hydrogen transfer is deactivated, duration is set

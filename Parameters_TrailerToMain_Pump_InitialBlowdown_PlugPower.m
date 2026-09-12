@@ -144,6 +144,7 @@ LH2Model.p_ST_low = 11*barToPa;        % [Pa] ST vent valve lower pressure thres
 LH2Model.p_ST_high = 12*barToPa;     % [Pa] ET vent valve upper pressure threshold (= PRD set pressure)
 LH2Model.p_ST_final = 10*barToPa;      % [Pa] final venting pressure for (ST) (= pressure in the trailer before leaving the station)
 LH2Model.p_ST_min = 1.2*barToPa;   % [Pa] minimum allowable tank 1 pressure (article sect. 3.2)
+LH2Model.PumpIsenEff = 0.7;        % article sect. 2.1.1
 
 LH2Model.p_ET_low = 5.5*barToPa;        % [Pa] ET vent valve lower pressure threshold (= PRD hysteresis pressure)
 LH2Model.p_ET_high = 6.5*barToPa;      % [Pa] ET vent valve upper pressure threshold (= PRD set pressure) 
@@ -155,10 +156,10 @@ LH2Model.TopET = 0.2;                  % [] maximum fraction full for ET, when f
 
 if HydrogenTransfer==0      % If hydrogen transfer is deactivated, duration is set
 %     LH2Model.tFinal = 1*60*60;
-    LH2Model.tFinal=60*1;
+    LH2Model.tFinal=60*1;  
     LH2Model.namedetail=name+"_"+string(LH2Model.VTotal1)+"-"+string(LH2Model.VTotal2)+"m3";
 else  % If hydrogen transfer is activation, simulation duration is approximate to the transfer process duration
-    LH2Model.tFinal=60*1;
+    LH2Model.tFinal=60*10; % was 60*1, which truncated the blowdown mid-vent
 %   LH2Model.tFinal = 60*60*(LH2Model.VTotal2/12.5)*(LH2Model.TopET-LH2Model.pct_hL20)*(30*kgminTokgsec/LH2Model.PumpMassTransferFast)*.7;  % [s] Simulation final time (adaptative with ET volume and fill percentage)
     LH2Model.namedetail=name+"_"+string(LH2Model.VTotal1)+"-"+string(LH2Model.VTotal2)+"m3_"+string(LH2Model.p_ET_high/barToPa)+"bar";
 end

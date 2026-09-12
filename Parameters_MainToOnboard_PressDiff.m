@@ -18,7 +18,7 @@ LH2Model.p_atm = 1.01325e5;	 % [Pa] pressure of atmosphere
 LH2Model.g = 9.81;			 % [m/s^2] acceleration due to gravity
 
 % Tank geometry parameters
-LH2Model.VTotal1 = 20000*litersTom3;          % [m^3]total volume of (ST)    
+LH2Model.VTotal1 = 18000*litersTom3;          %changed from 20000(Scenario B) % [m^3]total volume of (ST)    
 LH2Model.VTotal2 = 1700*litersTom3;           % [m^3] total volume of (ET)   
 LH2Model.R1 = 1; 	         				  % [m] radius of (ST)
 LH2Model.R2 = 0.5;  				          % [m] radius of (ET)
@@ -58,7 +58,7 @@ LH2Model.tminV2 = 0.1;				% [s] ET grid time constant (vapor)
 % Initial conditons (ST)
 LH2Model.p10 = 6*barToPa;        % [Pa] initial pressure !! VALUE SHOULD BE BELOW PRESSURE RATING OR CRITICAL PRESSURE (186 psia), WHICHEVER IS LOWEST !!
 LH2Model.TL10 = 21;                 % [K] initial liquid temperature
-LH2Model.initialfillfraction = 0.7; % [0-1] initial filling fraction
+LH2Model.initialfillfraction = 0.65; %Changed from 0.7 to match case 5 % [0-1] initial filling fraction
 LH2Model.totalmass10 = LH2Model.initialfillfraction*LH2Model.VTotal1*LH2Model.rho_L;        % [kg] inital total mass (liquid + vapor) !! using density that considers only liquid, but this is only an estimate value for total mass.
 
 LH2Model.Tv10 = 0.1+(-1.603941638811E-11*(LH2Model.p10/psiToPa)^6 + 7.830478134841E-09*(LH2Model.p10/psiToPa)^5 - 1.549372675881E-06*(LH2Model.p10/psiToPa)^4 + 1.614567978153E-04*(LH2Model.p10/psiToPa)^3 - 9.861776990784E-03*(LH2Model.p10/psiToPa)^2 + 4.314905904166E-01*(LH2Model.p10/psiToPa)^1 + 1.559843335080E+01); % saturation temperature of vapor, from Refprop
@@ -70,10 +70,10 @@ LH2Model.mL10 = LH2Model.rhoL10 * (LH2Model.VTotal1 - LH2Model.Vullage10);      
 LH2Model.mv10 = LH2Model.totalmass10 - LH2Model.mL10;                              % [kg] initial vapor mass in ST
 
 % Initial conditions (ET)
-LH2Model.p20 = 6*barToPa;             % [Pa] initial pressure !! VALUE SHOULD BE BELOW PRESSURE RATING OR CRITICAL PRESSURE (186 psia), WHICHEVER IS LOWEST !!
+LH2Model.p20 = 5*barToPa;             %Changed from 6 (Sccenario B) % [Pa] initial pressure !! VALUE SHOULD BE BELOW PRESSURE RATING OR CRITICAL PRESSURE (186 psia), WHICHEVER IS LOWEST !!
 LH2Model.Tv20 = 0.1+(-1.603941638811E-11*(LH2Model.p20/psiToPa)^6 + 7.830478134841E-09*(LH2Model.p20/psiToPa)^5 - 1.549372675881E-06*(LH2Model.p20/psiToPa)^4 + 1.614567978153E-04*(LH2Model.p20/psiToPa)^3 - 9.861776990784E-03*(LH2Model.p20/psiToPa)^2 + 4.314905904166E-01*(LH2Model.p20/psiToPa)^1 + 1.559843335080E+01); % saturation temperature of vapor, from Refprop
-LH2Model.TL20 = 21;                  % [K] initial liquid temperature
-LH2Model.Tw20 = 21;                    % [K] initial wall temperature     
+LH2Model.TL20 = 25;                  %Changed from 21 to match case 5 % [K] initial liquid temperature
+LH2Model.Tw20 = 25;                   %Changed from 21 to match case 5 % [K] initial wall temperature     
 LH2Model.pct_hL20 = 0.1;              % initial level of liquid, measured in inH2O but reported as a fraction (i.e. 0.5 is 5 out of 10 inH2O). Value should be between >0 and 1 (=0 may trigger errors)
 
 LH2Model.Ts20 = LH2Model.T_c*(LH2Model.p20/LH2Model.p_c)^(1/LH2Model.lambda);      % [K] initial film temperature.  From Osipov 2008, see reference in Readme file
@@ -123,7 +123,9 @@ if Topfill
     LH2Model.ConvCoeffTopfill = 7000;           % Number of nozzles to simulate spray
     LH2Model.initial_ratio_top_bottom=0.0;        % ratio between top and bottom fill to (ET) at the beginning of the process. 0.5 = 50% of liquid goes to top. Values between 0.01 and 0.03 are best...
 else
-    LH2Model.ratio_top_bottom=0;
+    LH2Model.initial_ratio_top_bottom=0;
+    LH2Model.ConvCoeffTopfill = 0;
+    LH2Model.bulkevap_ratio_top_bottom=0;
 end
 
 % Vent valves
@@ -133,13 +135,13 @@ LH2Model.S_valve2 = 3.1416*(2.5*0.0035)^2; % [m^2] orifice area of ET vent valve
 LH2Model.ETVentState = 0;               % initial ET vent state (starts closed) 
 
 % Pressure settings
-LH2Model.p_ST_slow = 8*barToPa;       % [Pa] threshold pressure for slow fill 
-LH2Model.p_ST_fast = 8*barToPa;       % [Pa] threshold pressure for fast fill
-LH2Model.p_ST_final = 8*barToPa;      % [Pa] final venting pressure for (ST) (= pressure in the trailer before leaving the station)
+LH2Model.p_ST_slow = 8*barToPa;       %changed from 8 to cater the increment made in tank 2 % [Pa] threshold pressure for slow fill 
+LH2Model.p_ST_fast = 8*barToPa;       %changed from 8 to cater the increment made in tank 2 % [Pa] threshold pressure for fast fill
+LH2Model.p_ST_final = 1.2*barToPa;    %changed from 8 to match the article % [Pa] final venting pressure for (ST) (= pressure in the trailer before leaving the station)
 
-LH2Model.p_ET_low = 6*barToPa;        % [Pa] ET vent valve lower pressure threshold (= PRD hysteresis pressure)
-LH2Model.p_ET_high = 7*barToPa;       % [Pa] ET vent valve upper pressure threshold (= PRD set pressure) 
-LH2Model.p_ET_final = 7*barToPa;      % [Pa] final venting pressure for (ET) (= pressure in the truck's tank before leaving the station)
+LH2Model.p_ET_low = 11*barToPa;       %changed from 6 as case 5 Case 5 vents 12→11 % [Pa] ET vent valve lower pressure threshold (= PRD hysteresis pressure)
+LH2Model.p_ET_high = 12*barToPa;      %changed from 7 as MWP must match % [Pa] ET vent valve upper pressure threshold (= PRD set pressure) 
+LH2Model.p_ET_final = 11*barToPa;     %changed from 7 % [Pa] final venting pressure for (ET) (= pressure in the truck's tank before leaving the station)
 
 
 LH2Model.TopET = 0.9;                  % [] maximum fraction full for ET, when fill stops. Value should be between 0 and 1 (0.9 = 90%)
