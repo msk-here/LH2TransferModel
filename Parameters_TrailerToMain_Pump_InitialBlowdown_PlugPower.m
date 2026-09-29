@@ -124,7 +124,9 @@ if Topfill
     LH2Model.ConvCoeffTopfill = 7000;           % Number of nozzles to simulate spray
     LH2Model.initial_ratio_top_bottom=0.0;        % ratio between top and bottom fill to (ET) at the beginning of the process. 0.5 = 50% of liquid goes to top. Values between 0.01 and 0.03 are best...
 else
-    LH2Model.ratio_top_bottom=0;
+    LH2Model.initial_ratio_top_bottom = 0;
+    LH2Model.ConvCoeffTopfill = 0;
+    LH2Model.bulkevap_ratio_top_bottom = 0;
 end
 
 % Vent valves
