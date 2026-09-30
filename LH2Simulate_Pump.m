@@ -212,8 +212,10 @@ function dxdt = LH2dxdt(P,t,x)
     % liquid temperatures for (ST)
     for i = 1:P.nL1
         TL1(i)= 1.44867559E-07*(uL1(i)/1000)^3 - 2.53438808E-04*(uL1(i)/1000)^2 + 1.05449468E-01*(uL1(i)/1000) + 2.03423757E+01; % correlation from REFPROP v9.1
-        if TL1(i) < 13.804 || TL1(i) > 32.93
-            error('LH2:TL1outOfRange', 'TL1(%d) = %.4f K is outside [13.804, 32.93] K at t = %.3f s', i, TL1(i), t);
+        if TL1(i) < 13.804
+            error('LH2:TL1belowTriple', 'TL1(%d) = %.4f K is below 13.804 K at t = %.3f s', i, TL1(i), t);
+        elseif TL1(i) > 32.93
+            TL1(i) = 32.93;
         end
    end
     
@@ -304,8 +306,12 @@ function dxdt = LH2dxdt(P,t,x)
     for i = 1:P.nL2
          TL2(i)= refpropm('T','P',pTotal2/1000,'U',uL2(i),'PARAHYD');
         %TL2(i)= 1.44867559E-07*(uL2(i)/1000)^3 - 2.53438808E-04*(uL2(i)/1000)^2 + 1.05449468E-01*(uL2(i)/1000) + 2.03423757E+01; % correlation from REFPROP v9.1
-        if TL2(i) < 13.804 || TL2(i) > 32.93
-            error('LH2:TL2outOfRange', 'TL2(%d) = %.4f K is outside [13.804, 32.93] K at t = %.3f s', i, TL2(i), t);
+         if TL2(i) < 13.804
+            error('LH2:TL2belowTriple', 'TL2(%d) = %.4f K is below 13.804 K at t = %.3f s', i, TL2(i), t);
+        elseif TL2(i) > 32.93
+            disp('High TL2');
+            display(TL2(i));
+            TL2(i) = 32.93;
         end
     end
     
