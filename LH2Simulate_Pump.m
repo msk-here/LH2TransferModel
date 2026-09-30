@@ -670,7 +670,7 @@ function dxdt = LH2dxdt(P,t,x)
         htr_L_real=(Pumphisen-htr_L)*P.PumpIsenEff+htr_L;
     end
     PumpLosses=PumpPower-PumpPisen;
-    QdotPump=P.PumpHeatCond+PumpLosses;
+    QdotPump=P.PumpHeatCond;   % losses are already inside htr_L_real (article eq. 1); adding PumpLosses here counted them twice
     % QdotPump=P.PumpHeatCond+P.PumpHeatGain*(Jtr0*3600/1000); % Fixed heat gain (conduction) + variable proportional to flow rate (inefficiencies)
 
 
@@ -689,7 +689,9 @@ function dxdt = LH2dxdt(P,t,x)
     %---------------------
     % enthalpy terms, modified for ideal vs. real gases
     %---------------------
-    htr_L=htr_L_real;
+    htr_L_ST=htr_L;     % enthalpy leaving tank 1, before the pump
+    htr_L=htr_L_real;   % enthalpy delivered to tank 2, after the pump
+
     % if TL1(P.nL1) > 32 
     %     htr_L = P.c_L*TL1(P.nL1); 
     % else
@@ -734,9 +736,9 @@ function dxdt = LH2dxdt(P,t,x)
     vtr = Jtr/(pi*(0.5*P.dE)^2)/rhotr;  % velocity in the transfer line
     
     QdotL1 = P.QdotEL1 - QdotLS1 + pdV1 ... % Energy flowing into ST liquid due to heat transfer from env., heat transfer between gas and liquid, pdV, mass transfer to ET, condensation and vaporization
-            - Jtr*(htr_L+0.5*vtr^2) ...
+            - Jtr*(htr_L_ST+0.5*vtr^2) ...
             + Jcd1*hcd1...
-            - Jvap*htr_L - Jevap1*hcd1;
+            - Jvap*htr_L_ST - Jevap1*hcd1;
 
    %-----------------------------------------------------
    % Heat flows to vapor and liquid phases in (ET)
@@ -839,9 +841,9 @@ function dxdt = LH2dxdt(P,t,x)
     EEE =  - Jcd1*hcd1;
     FFF = Jboil*hboil;
     GGG = - QdotLS1;
-    HHH = - Jtr*htr_L+0.5*vtr^2;
+    HHH = - Jtr*htr_L_ST+0.5*vtr^2;
     III = + Jcd1*hcd1 ;
-    JJJ = - Jvap*htr_L;
+    JJJ = - Jvap*htr_L_ST;
     KKK = QdotV1 ;
     LLL = QdotL1 ;
     
