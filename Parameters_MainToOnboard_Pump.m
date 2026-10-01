@@ -96,8 +96,8 @@ LH2Model.QdotEV1 = 40*(LH2Model.VTotal1/64.5);                 % [W] heat transf
 LH2Model.STBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
 
 % Heat transfer coefficients (ET)
-LH2Model.QdotEW2 = (-7.462776654302E-02*LH2Model.VTotal2^2 + 4.445867251697E+00*LH2Model.VTotal2 + 3.108170556297E+01);  % [W] heat transfer from environment to vessel's wall depending on the volume. Correlation from LLNL.
-LH2Model.mw2 = LH2Model.VTotal2*5000/12.5/2;       % [kg] mass of ET inner vessel. Using as a reference: tank of 12500L weights 5000kg
+LH2Model.QdotEW2 = (-7.462776654302E-02*LH2Model.VTotal2^2 + 4.445867251697E+00*LH2Model.VTotal2 + 3.108170556297E+01);  % [W] heat transfer from environment to vessel's wall depending on the volume. Correlation from LLNL.     
+LH2Model.mw2 = 1600;                   % [kg] mass of ET inner vessel, article Table (Scenario B); was LH2Model.VTotal2*5000/12.5/2 = 340 kg  % Previous Comment: [kg] mass of ET inner vessel. Using as a reference: tank of 12500L weights 5000kg
 LH2Model.ETBoiloffrate = 0.03/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
 
 % Vaporizer parameters, in (ST)

@@ -73,8 +73,8 @@ LH2Model.mv10 = LH2Model.totalmass10 - LH2Model.mL10;                           
 % Initial conditions (ET)
 LH2Model.p20 = 3*barToPa;             % [Pa] initial pressure !! VALUE SHOULD BE BELOW PRESSURE RATING OR CRITICAL PRESSURE (186 psia), WHICHEVER IS LOWEST !!
 LH2Model.Tv20 = 0.1+(-1.603941638811E-11*(LH2Model.p20/psiToPa)^6 + 7.830478134841E-09*(LH2Model.p20/psiToPa)^5 - 1.549372675881E-06*(LH2Model.p20/psiToPa)^4 + 1.614567978153E-04*(LH2Model.p20/psiToPa)^3 - 9.861776990784E-03*(LH2Model.p20/psiToPa)^2 + 4.314905904166E-01*(LH2Model.p20/psiToPa)^1 + 1.559843335080E+01); % saturation temperature of vapor, from Refprop
-LH2Model.TL20 = 21;                  % [K] initial liquid temperature
-LH2Model.Tw20 = 21;                    % [K] initial wall temperature     
+LH2Model.TL20 = 21;                  % [K] initial liquid temperature   
+LH2Model.Tw20 = 25;                    % [K] initial wall temperature, article Table (Scenario A)    
 LH2Model.pct_hL20 = 0.01;              % initial level of liquid, measured in inH2O but reported as a fraction (i.e. 0.5 is 5 out of 10 inH2O). Value should be between >0 and 1 (=0 may trigger errors)
 
 LH2Model.Ts20 = LH2Model.T_c*(LH2Model.p20/LH2Model.p_c)^(1/LH2Model.lambda);      % [K] initial film temperature.  From Osipov 2008, see reference in Readme file
@@ -96,7 +96,7 @@ LH2Model.STBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as
 
 % Heat transfer coefficients (ET)
 LH2Model.QdotEW2 = (-7.462776654302E-02*LH2Model.VTotal2^2 + 4.445867251697E+00*LH2Model.VTotal2 + 3.108170556297E+01);  % [W] heat transfer from environment to vessel's wall depending on the volume. Correlation from LLNL.
-LH2Model.mw2 = LH2Model.VTotal2*5000/12.5/2;       % [kg] mass of ET inner vessel. Using as a reference: tank of 12500L weights 5000kg
+LH2Model.mw2 = 8850;                   % [kg] mass of ET inner vessel, article Table (Scenario A); was LH2model.VTotal2*5000/12.5/2 = 3600 kg
 LH2Model.ETBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
 
 % Vaporizer parameters, in (ST)
