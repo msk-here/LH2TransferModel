@@ -1051,6 +1051,21 @@ function H=cylVToH(V,R,L)
     else
         H=R-x;
     end
+    % Newton returns a complex or NaN height within a few millilitres of
+    % exactly half full, where its step passes through x = 0. Keep its
+    % answer otherwise; in that band, use bisection on the segment area.
+    if ~isreal(H) || ~isfinite(H)
+        s = min(max(V/L,0),A); lo = 0; hi = 2*R;
+        for k = 1:60
+            h = (lo+hi)/2;
+            if R^2*acos((R-h)/R) - (R-h)*sqrt(2*R*h-h^2) < s
+                lo = h;
+            else
+                hi = h;
+            end
+        end
+        H = (lo+hi)/2;
+    end
 end
 
 function pv=vaporpressure(uv,rhov)
