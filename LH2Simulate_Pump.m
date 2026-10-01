@@ -742,7 +742,7 @@ function dxdt = LH2dxdt(P,t,x)
     vtr = Jtr/(pi*(0.5*P.dE)^2)/rhotr;  % velocity in the transfer line
     
     QdotL1 = P.QdotEL1 - QdotLS1 + pdV1 ... % Energy flowing into ST liquid due to heat transfer from env., heat transfer between gas and liquid, pdV, mass transfer to ET, condensation and vaporization
-            - Jtr*(htr_L_ST+0.5*vtr^2) ...
+            - Jtr*htr_L_ST ...
             + Jcd1*hcd1...
             - Jvap*htr_L_ST - Jevap1*hcd1;
 
@@ -761,7 +761,7 @@ function dxdt = LH2dxdt(P,t,x)
         QdotL2 = QdotWL2 - QdotLS2 + pdV2 ... % Energy flowing into ET liquid due to heat transfer from env., heat transfer between gas and liquid, pdV, pumping, mass transfer into ET and condensation
            + QdotPump ... % Pump heat gain
            + QdotTopfill... % Topfill warming effect to liquid, heat given from vapor to liquid
-           + (1-ratio_top_bottom)*Jtr*(htr_L+0.5*vtr^2) ... % Inlet energy due to transfered liquid
+           + (1-ratio_top_bottom)*Jtr*htr_L ... % Inlet energy due to transfered liquid
            + Jcd2*hcd2 - Jevap2*hcd2;
    
     % if TL2(P.nL1)>=Ts20
@@ -847,7 +847,7 @@ function dxdt = LH2dxdt(P,t,x)
     EEE =  - Jcd1*hcd1;
     FFF = Jboil*hboil;
     GGG = - QdotLS1;
-    HHH = - Jtr*(htr_L_ST+0.5*vtr^2);
+    HHH = - Jtr*htr_L_ST;
     III = + Jcd1*hcd1 ;
     JJJ = - Jvap*htr_L_ST;
     KKK = QdotV1 ;
@@ -861,7 +861,7 @@ function dxdt = LH2dxdt(P,t,x)
     RRR = - Jcd2*hcd2;
     SSS = QdotWL2;
     TTT = - QdotLS2;
-    UUU = + (1-ratio_top_bottom)*Jtr*(htr_L+0.5*vtr^2);
+    UUU = + (1-ratio_top_bottom)*Jtr*htr_L;
     VVV =  + Jcd2*hcd2;
     WWW = QdotV2;
     XXX = QdotL2;
