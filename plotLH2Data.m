@@ -347,7 +347,7 @@ ylim([-5 1])
 xlabel('Time [min]');
 grid on;
 
-if Case==4 || Case==2
+if ~isfield(data,'YYY')   % run had no pump (pressure-gradient solver); was: if Case==4 || Case==2
     subplot(2,1,2);
     u=plot(data.t/60,data.SSS/1000,data.t/60,data.TTT/1000,data.t/60,data.OOO/1000,data.t/60,data.UUU/1000,data.t/60,data.VVV/1000,data.t/60,data.QdotTopfill/1000,data.t/60,data.XXX/1000);
     u(6).LineWidth = 2;
@@ -792,6 +792,7 @@ ylim([0 1.05]);
 %%
 figure;
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.2 0.2 0.6 0.6]); % Enlarge figure to 70% of full screen.
+if isfield(data,'YYY')   % pump-only figures (Figs. 20-21); pressure-gradient runs have no pump
 plot(data.t/60,data.YYY/1000)
 ylabel('Inefficiencies at pump [kW]');
 xlabel('Time [min]');
@@ -819,3 +820,4 @@ if save==1
     saveas(gcf,path+"Fig21.png")
     saveas(gcf,path+"Fig21.fig")
 end
+end 
