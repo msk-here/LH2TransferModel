@@ -135,13 +135,13 @@ LH2Model.S_valve2 = 3.1416*(2.5*0.0035)^2; % [m^2] orifice area of ET vent valve
 LH2Model.ETVentState = 0;               % initial ET vent state (starts closed) 
 
 % Pressure settings
-LH2Model.p_ST_slow = 8*barToPa;       %changed from 8 to cater the increment made in tank 2 % [Pa] threshold pressure for slow fill 
-LH2Model.p_ST_fast = 8*barToPa;       %changed from 8 to cater the increment made in tank 2 % [Pa] threshold pressure for fast fill
-LH2Model.p_ST_final = 1.2*barToPa;    %changed from 8 to match the article % [Pa] final venting pressure for (ST) (= pressure in the trailer before leaving the station)
+LH2Model.p_ST_slow = 8*barToPa;       % [Pa] threshold pressure for slow fill. Pressure-gradient fill: must stay above p_ET_high
+LH2Model.p_ST_fast = 8*barToPa;       % [Pa] threshold pressure for fast fill. Must stay above p_ET_high
+LH2Model.p_ST_final = 8*barToPa;      % [Pa] final venting pressure for (ST). Not the article's 1.2 bar, which is the pump cases' p_ST_min
 
-LH2Model.p_ET_low = 11*barToPa;       %changed from 6 as case 5 Case 5 vents 12→11 % [Pa] ET vent valve lower pressure threshold (= PRD hysteresis pressure)
-LH2Model.p_ET_high = 12*barToPa;      %changed from 7 as MWP must match % [Pa] ET vent valve upper pressure threshold (= PRD set pressure) 
-LH2Model.p_ET_final = 11*barToPa;     %changed from 7 % [Pa] final venting pressure for (ET) (= pressure in the truck's tank before leaving the station)
+LH2Model.p_ET_low = 6*barToPa;        % [Pa] ET vent valve lower pressure threshold. 11 bar (as Case 5) stalled the fill at 42.40 kg
+LH2Model.p_ET_high = 7*barToPa;       % [Pa] ET vent valve upper pressure threshold. 12 bar (Case 5 MWP) is unreachable with an 8 bar supply
+LH2Model.p_ET_final = 7*barToPa;      % [Pa] final venting pressure for (ET)
 
 
 LH2Model.TopET = 0.9;                  % [] maximum fraction full for ET, when fill stops. Value should be between 0 and 1 (0.9 = 90%)

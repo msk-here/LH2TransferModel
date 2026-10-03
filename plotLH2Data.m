@@ -30,8 +30,7 @@ UsedMass=data.UsedMass(end)
 VentingT1=data.Boiloff_ST(end)
 VentingT2=data.Boiloff_ET(end)
 TotalVenting=data.Boiloff_ST(end)+data.Boiloff_ET(end)
-RelativeVenting=TotalVenting/UsedMass*100
-
+RelativeVenting=TotalVenting/TransferredMass*100   % article Eq. 35: total venting / effectively transferred LH2
 
 %% Figure 1: Liquid levels in T1 and T2 and transfer flow.
 figure;

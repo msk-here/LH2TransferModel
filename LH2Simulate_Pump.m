@@ -1066,7 +1066,7 @@ end
 
     % IMPORTANT: ETTTVentstate must be the last one. The row number must be
 % always updated & must be the last.
-    data.ETTTVenstate = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+50); % ET Vent State
+    data.ETTTVenstate = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+52); % ET Vent State % Changed from 50
 
     if HydrogenTransfer==0
         data.ProcComp(end)=1;
