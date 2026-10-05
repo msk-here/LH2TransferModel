@@ -22,6 +22,20 @@ catch ME
 	end
 end
 
+% Constant top-branch configuration; Eq. (50) preserves the zero-split path.
+P = Parameters_topfill_defaults(P);
+assert(isnumeric(P.TF_r) && isreal(P.TF_r) && isscalar(P.TF_r) && ...
+    isfinite(P.TF_r) && P.TF_r >= 0 && P.TF_r <= 1, ...
+    'TF_r must be a constant fraction in [0,1].');
+assert((ischar(P.TF_mode) && isrow(P.TF_mode)) || ...
+    (isstring(P.TF_mode) && isscalar(P.TF_mode)), ...
+    'TF_mode must be spray or jet.');
+assert(any(strcmp(P.TF_mode, {'spray', 'jet'})), ...
+    'TF_mode must be spray or jet.');
+tf_active = (Topfill == 1) && P.TF_r > 0;
+P.initial_ratio_top_bottom = 0; % Eq. (21): exclude every legacy split.
+P.bulkevap_ratio_top_bottom = 0;
+
 % set default name
 if nargin<2
 	name = 'fill from trailer to Dewar';
@@ -289,7 +303,7 @@ function dxdt = LH2dxdt(P,t,x)
     else
         hL2 = VL2/P.A2;         % [m] height of liquid in (ET)
     end
-    ratio_top_bottom=P.initial_ratio_top_bottom/P.pct_hL20*(P.VTotal2-VL2)/P.VTotal2;
+    ratio_top_bottom = 0; % Eq. (21): independent of the user top fraction.
     
    % ET liquid and total pressures
     pL2 = rho_L2*P.g*hL2; % [Pa] liquid pressure in (ET)
@@ -583,31 +597,9 @@ function dxdt = LH2dxdt(P,t,x)
     end
 
     %---------------------
-    % Top-fill heat transfer
+    % Retired placeholder heat (the active branch uses the five ports below)
     %---------------------
-    if Topfill
-        hv2 = (P.VTotal2-VL2)/P.A2;         % [m] height of liquid in (ET)
-        % PrLtr = refpropm('^','T',TL1(P.nL1),'Q',0,'PARAHYD'); % Prandtl number of transferred LH2
-        % muLtr = refpropm('V','T',TL1(P.nL1),'Q',0,'PARAHYD'); % Dynamic viscosity of transferred LH2
-        % kappaLtr = refpropm('L','T',TL1(P.nL1),'Q',0,'PARAHYD'); % Thermal conductivity of transferred LH2
-        % ReLtr= 4*(Jtr/P.ETnozzleamout)/(pi*sqrt(P.ETinletdiameter^2/P.ETnozzleamout)*muLtr); % Equivalent reynolds of transferred LH2 considering spray (Steder and Tate)
-        % fLtr=(0.79*log(ReLtr)-1.64)^-2; % Equivalent friction factor of transferred LH2 considering spray nozzles
-        % Ltrdens=refpropm('D','T',TL1(P.nL1),'Q',0,'PARAHYD'); % Density of transferred LH2 --not used--
-        % velLtr=Jtr/(pi*P.ETinletdiameter^2/4*Ltrdens); % Inlet velocity of transferred LH2 --not used--
-        %NuLtr=((fLtr/8)*(ReLtr-1000)*PrLtr)/(1+12.7*(fLtr/8)^0.5*(PrLtr^(2/3)-1)); % Equivalent Nusselt number in the LH2 sprays (Incropera et al.)
-        %ConvCoeffTopfill=NuLtr*kappaLtr/P.ETinletdiameter;
-        %QdotTopfill=P.Correction_GH2HeatCond*ConvCoeffTopfill*((Tv2(P.nV2)-TL1(P.nL1))*0.5)*(pi*P.ETinletdiameter*hv2*P.ETnozzleamout);
-        ConvCoeffTopfill=P.ETinletdiameter*Jtr/P.PumpMassTransferFast;
-        QdotTopfill=ConvCoeffTopfill*((Tv2(P.nV2)-TL1(P.nL1))*0.5)*(pi*P.ETinletdiameter*hv2*P.ETnozzleamout);
-        if QdotTopfill<0
-            QdotTopfill=0;
-        end
-        if Jtr<0.035
-            QdotTopfill=0;
-        end
-    else 
-        QdotTopfill=0;
-    end
+    QdotTopfill=0; % Eq. (21): no threshold or legacy heat source.
 
     %---------------------    
     % condensation flows (ST) and (ET)
@@ -621,7 +613,7 @@ function dxdt = LH2dxdt(P,t,x)
     if qh2<=0
         Jcd2 = 0;
     else       
-        Jcd2 = -(QdotLS2+QdotVS2)/qh2 - (ratio_top_bottom) * Jtr; % term added for top fill
+        Jcd2 = -(QdotLS2+QdotVS2)/qh2; % Eq. (2): guarded pool-interface rate only.
     end
 
     %---------------------    
@@ -636,14 +628,18 @@ function dxdt = LH2dxdt(P,t,x)
     Jv1 = Jboil - Jvvalve1 - Jcd1 + Jevap1;                      % variation of mass of vapor in (ST)
     JL1 = -Jtr - Jvap + Jcd1 - Jevap1;                           % variation of mass of liquid in (ST)
         
-    Jv2 = (ratio_top_bottom) * Jtr  - Jvvalve2 - Jcd2 + Jevap2; % variation of mass of vapor in (ET)
-    JL2 = (1-ratio_top_bottom) * Jtr + Jcd2 - Jevap2;         % variation of mass of liquid in (ET)
+    if ~tf_active % Eq. (50): original bottom-fill arithmetic and evaluation order.
+        Jv2 = (ratio_top_bottom) * Jtr  - Jvvalve2 - Jcd2 + Jevap2; % variation of mass of vapor in (ET)
+        JL2 = (1-ratio_top_bottom) * Jtr + Jcd2 - Jevap2;         % variation of mass of liquid in (ET)
+    end
 
     %---------------------
     % pdV work, ST and ET
     %---------------------
     pdV1 = -pv1*(JL1/rho_L1);
-    pdV2 = -pv2*(JL2/rho_L2);
+    if ~tf_active
+        pdV2 = -pv2*(JL2/rho_L2);
+    end
     
     %---------------------
     % exit velocities, ST and ET
@@ -696,6 +692,18 @@ function dxdt = LH2dxdt(P,t,x)
     % heat flow to liquid in (ST)
     rhotr = rho_L1 ;                    % assumed density in the transfer line
     vtr = Jtr/(pi*(0.5*P.dE)^2)/rhotr;  % velocity in the transfer line
+
+    if tf_active
+        J_top = P.TF_r*Jtr; % Eq. (47): total line flow is retained upstream.
+        J_bot = (1-P.TF_r)*Jtr;
+        sTF = struct('h_in', htr_L, 'v_in', vtr, ...
+            'p_v', pv2, 'T_v', Tv2(P.nV2), 'rho_v', rhov2, ...
+            'H_ullage', (P.VTotal2-VL2)/P.A2); % Eq. (1): actual delivered state.
+        TF = topfill_sources(P.TF_mode, J_top, sTF, P);
+        JL2 = J_bot+TF.J_top_liq+Jcd2-Jevap2; % Eq. (22).
+        Jv2 = TF.J_top_vap-Jvvalve2-Jcd2+Jevap2;
+        pdV2 = -pv2*(JL2/rho_L2);
+    end
     
     QdotL1 = P.QdotEL1 - QdotLS1 + pdV1 ... % Energy flowing into ST liquid due to heat transfer from env., heat transfer between gas and liquid, pdV, mass transfer to ET, condensation and vaporization
             - Jtr*(htr_L+0.5*vtr^2) ...
@@ -705,6 +713,15 @@ function dxdt = LH2dxdt(P,t,x)
    %-----------------------------------------------------
    % Heat flows to vapor and liquid phases in (ET)
    %----------------------------------------------------- 
+   if tf_active
+       QdotV2 = QdotWV2-QdotVS2-pdV2 ...
+           +TF.H_top_vap-TF.Q_vap_to_top ...
+           -Jvvalve2*(hvalve2+0.5*vv2^2) ...
+           -Jcd2*hcd2+Jevap2*hcd2; % Eq. (23): explicit heat leaves vapor only.
+       QdotL2 = QdotWL2-QdotLS2+pdV2 ...
+           +J_bot*(htr_L+0.5*vtr^2)+TF.H_top_liq ...
+           +Jcd2*hcd2-Jevap2*hcd2;
+   else % Eq. (50): zero factors preserve the original bottom-fill operations.
    % heat flow to vapor phase in (ET)
    QdotV2 = QdotWV2 - QdotVS2 - pdV2 ...   % Energy flowing into ET vapor due to heat transfer from env., heat transfer between gas and liquid, pdV, mass transfer into ET, mass venting and condensation
         - QdotTopfill ... % Topfill cooling effect, heat given from vapor to liquid
@@ -717,6 +734,7 @@ function dxdt = LH2dxdt(P,t,x)
            + QdotTopfill... % Topfill warming effect to liquid, heat given from vapor to liquid
            + (1-ratio_top_bottom)*Jtr*(htr_L+0.5*vtr^2) ... % Inlet energy due to transfered liquid
            + Jcd2*hcd2 - Jevap2*hcd2;
+   end
   
     %-----------------------------------------------------
     % Variation of internal energies (boundary layers and bulk)

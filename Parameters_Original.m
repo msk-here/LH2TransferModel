@@ -134,7 +134,8 @@ if Topfill
     LH2Model.ETinletdiameter = 0.02;
     LH2Model.ETnozzleamout = 1;
     LH2Model.ConvCoeffTopfill = 7000;
-    LH2Model.initial_ratio_top_bottom = 0.01;
+    LH2Model.initial_ratio_top_bottom = 0;
+    LH2Model.bulkevap_ratio_top_bottom = 0;
 else
     LH2Model.initial_ratio_top_bottom = 0;
     LH2Model.ConvCoeffTopfill = 0;

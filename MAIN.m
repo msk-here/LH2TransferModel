@@ -24,7 +24,10 @@ HydrogenTransfer=1; % '0' for simulating stationary process. Simulation time of 
                     % '1' for simulating transfer process. Simulation time of transfer process duration.
 
 Topfill=0;  % '0' for simulating a bottom fill process.
-            % '1' for simulating an approximation for a top fill process.
+            % '1' for simulating spray or jet top fill, including hybrid fill.
+TopfillMode='spray'; % 'spray' or 'jet'; used only when Topfill = 1.
+TopBottomRatio=0;    % Fraction r of total flow through the top inlet, in [0, 1].
+                    % r = 1: pure top fill; 0 < r < 1: hybrid; r = 0: bottom fill.
             
 odesolver= 1;   % '1' for using ode45. More accurate, more computing time. Might crash if system is stiff. 
                 % '2' for using ode15s. For stiff systems.
@@ -121,6 +124,11 @@ else
     Parameters_Original;
 
 end
+
+LH2Model.TF_enabled = (Topfill == 1);
+LH2Model.TF_mode = TopfillMode;
+LH2Model.TF_r = TopBottomRatio;
+LH2Model = Parameters_topfill_defaults(LH2Model);
 
 % 2. Run simulation
 if Case==3 || Case==5 || Case ==6
