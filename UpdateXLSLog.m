@@ -68,7 +68,7 @@ elseif Case==3
     A.Method = "Pump";
 elseif Case==4
     A.Scenario = "Main to On-board";
-    Method = "Pres. diff.";
+    A.Method = "Pres. diff.";
 else
     A.Scenario = "Main to On-board";
     A.Method = "Pump";

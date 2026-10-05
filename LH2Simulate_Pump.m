@@ -867,12 +867,20 @@ function dxdt = LH2dxdt(P,t,x)
     MMM = QdotWV2;
     NNN = - QdotVS2;
     OOO = pdV2;   
-    PPP =  ratio_top_bottom * Jtr * (htr_L+0.5*vtr^2-qh2);
+    if tf_active
+        PPP = TF.H_top_vap; % [W] Signed top vapor enthalpy port; heat is separate.
+    else
+        PPP =  ratio_top_bottom * Jtr * (htr_L+0.5*vtr^2-qh2); % Inactive baseline (zero).
+    end
     QQQ = - Jvvalve2*(hvalve2 + 0.5*vv2^2);
     RRR = - Jcd2*hcd2;
     SSS = QdotWL2;
     TTT = - QdotLS2;
-    UUU = + (1-ratio_top_bottom)*Jtr*(htr_L+0.5*vtr^2);
+    if tf_active
+        UUU = J_bot*(htr_L+0.5*vtr^2)+TF.H_top_liq; % [W] Combined liquid inlet energy.
+    else
+        UUU = + (1-ratio_top_bottom)*Jtr*(htr_L+0.5*vtr^2); % Bottom-fill inlet energy.
+    end
     VVV =  + Jcd2*hcd2;
     WWW = QdotV2;
     XXX = QdotL2;
@@ -887,8 +895,13 @@ function dxdt = LH2dxdt(P,t,x)
     ZGG = ET_Filled;
     ZHH = ET_vent_complete;
     ZII = ST_vent_complete;
-    ZJJ = QdotTopfill;
-    ZKK = (ratio_top_bottom) * Jtr ;
+    if tf_active
+        ZJJ = TF.Q_vap_to_top; % [W] Signed heat leaving vapor for the top stream.
+        ZKK = TF.J_top_vap; % [kg/s] Signed flash plus flight vapor inflow.
+    else
+        ZJJ = QdotTopfill;
+        ZKK = (ratio_top_bottom) * Jtr ;
+    end
     ZLL = PumpPower;
     ZMM = htr_L_real;
     
@@ -1041,12 +1054,12 @@ end
     data.MMM = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+25);
     data.NNN = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+26);
     data.OOO = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+27);
-    data.PPP = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+28);
+    data.PPP = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+28); % [W] Filtered H_top_vap; excludes the separate heat port.
     data.QQQ = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+29);
     data.RRR = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+30);
     data.SSS = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+31);
     data.TTT = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+32);
-    data.UUU = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+33);
+    data.UUU = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+33); % [W] Filtered bottom + top liquid inlet energy.
     data.VVV = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+34);
     
     data.WWW = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+35);
@@ -1070,8 +1083,8 @@ end
     data.ETVentComp = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+46) ; % ET Vent Complete
     data.STVentComp = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+47) ; % ST Vent Complete
 
-    data.QdotTopfill = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+48) ; % Vapor cooling due to top fill
-    data.JvEvapTopfill = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+49) ; % Liquid evaporation due to top fill
+    data.QdotTopfill = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+48) ; % [W] Filtered signed Q_vap_to_top (ZJJ); positive cools vapor.
+    data.JvEvapTopfill = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+49) ; % [kg/s] Filtered signed J_top_vap (ZKK); flash + evaporation/condensation.
     data.PumpPower = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+50) ; % LH2 pump power
     data.hAfterPump = xout(:,P.nL1+P.nV1+P.nL2+P.nV2+51) ; % LH2 pump power
 

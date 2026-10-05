@@ -268,7 +268,7 @@ ylabel({'Mass flows to VAPOR T2';'[kg/sec] (+ in, - out)'});
 xlim([0 data.t(end)/60]);
 ylim([-0.006 0.001])
 xlabel('Time [min]');
-legend('TOTAL mf', 'Evaporation mf','(-)Venting mf','Boiling mf','Top-fill evaporation mf');
+legend('TOTAL mf', 'Evaporation mf','(-)Venting mf','Boiling mf','Signed top vapor inflow (flash + evap./cond.)');
 grid on;
 
 if save==1
@@ -338,7 +338,7 @@ set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.15 0.15 0.7 0.7]); % Enlarge
 subplot(2,1,1);
 t=plot(data.t/60,data.MMM/1000,data.t/60,data.NNN/1000,data.t/60,-data.OOO/1000,data.t/60,data.QQQ/1000,data.t/60,data.RRR/1000,data.t/60,(data.PPP-data.QdotTopfill)/1000,data.t/60,data.WWW/1000);
 t(6).LineWidth = 2;
-legend('Wall to vapor','Interphase to vap.','(-)pdV','(-)Venting enth.','Evaporation enth.','Top-fill cooling','TOTAL Heatflow','Location','south','NumColumns',4 )
+legend('Wall to vapor','Interphase to vap.','(-)pdV','(-)Venting enth.','Evaporation enth.','Signed net top vapor energy','TOTAL Heatflow','Location','south','NumColumns',4 )
 ylabel({'Heat flows to VAPOR at T2';'[kW] (+ in, - out)'});
 xlim([0 data.t(end)/60]);
 ylim([-5 1])
@@ -348,18 +348,18 @@ grid on;
 
 if ~isfield(data,'YYY')   % run had no pump (pressure-gradient solver); was: if Case==4 || Case==2
     subplot(2,1,2);
-    u=plot(data.t/60,data.SSS/1000,data.t/60,data.TTT/1000,data.t/60,data.OOO/1000,data.t/60,data.UUU/1000,data.t/60,data.VVV/1000,data.t/60,data.QdotTopfill/1000,data.t/60,data.XXX/1000);
+    u=plot(data.t/60,data.SSS/1000,data.t/60,data.TTT/1000,data.t/60,data.OOO/1000,data.t/60,data.UUU/1000,data.t/60,data.VVV/1000,data.t/60,data.XXX/1000);
     u(6).LineWidth = 2;
-    legend('Wall to vapor','Interphase to vap.','pdV','LH2 transfer enth.','Condensation enth.','Top-fill warming','TOTAL Heatflow','Location','south','NumColumns',4 )
+    legend('Wall to liquid','Interphase to liquid','pdV','Bottom + top liquid inlet energy','Condensation enth.','TOTAL Heatflow','Location','south','NumColumns',4 )
     xlim([0 data.t(end)/60]);
     xlabel('Time [min]');
     ylabel({'Heat flows to LIQUID at T2';'[kW] (+ in, - out)'});
     grid on;
 else
     subplot(2,1,2);
-    u=plot(data.t/60,data.SSS/1000,data.t/60,data.TTT/1000,data.t/60,data.OOO/1000,data.t/60,data.UUU/1000,data.t/60,data.VVV/1000,data.t/60,data.YYY/1000,data.t/60,data.QdotTopfill/1000,data.t/60,data.XXX/1000);
+    u=plot(data.t/60,data.SSS/1000,data.t/60,data.TTT/1000,data.t/60,data.OOO/1000,data.t/60,data.UUU/1000,data.t/60,data.VVV/1000,data.t/60,data.YYY/1000,data.t/60,data.XXX/1000);
     u(6).LineWidth = 2;
-    legend('Wall to vapor','Interphase to vap.','pdV','LH2 transfer enth.','Condensation enth.','Heatflow from pump','Top-fill warming','TOTAL Heatflow','Location','south','NumColumns',4 )
+    legend('Wall to liquid','Interphase to liquid','pdV','Bottom + top liquid inlet energy','Condensation enth.','Heatflow from pump','TOTAL Heatflow','Location','south','NumColumns',4 )
     xlim([0 data.t(end)/60]);
     xlabel('Time [min]');
     ylabel({'Heat flows to LIQUID at T2';'[kW] (+ in, - out)'});
@@ -422,7 +422,7 @@ set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.2 0.2 0.6 0.6]); % Enlarge f
 set(gcf,'defaultLineLineWidth',0.8)
 w=plot(data.t/60,data.MMM/1000,data.t/60,data.NNN/1000,data.t/60,-data.OOO/1000,data.t/60,data.QQQ/1000,data.t/60,data.RRR/1000,data.t/60,(data.PPP-data.QdotTopfill)/1000,data.t/60,data.WWW/1000);
 w(7).LineWidth = 1.7;
-legend('Wall to vapor','Interphase to vap.','(-)pdV','(-)Venting enth.','Evaporization enth.','Top-fill','TOTAL Heatflow','Location','southoutside','NumColumns',4 )
+legend('Wall to vapor','Interphase to vap.','(-)pdV','(-)Venting enth.','Evaporization enth.','Signed net top vapor energy','TOTAL Heatflow','Location','southoutside','NumColumns',4 )
 ylabel({'Heat flows to VAPOR at T2';'[kW] (+ in, - out)'});
 xlim([0 data.t(end)/60]);
 ylim([-15 5]);
@@ -443,7 +443,7 @@ ylabel({'Mass flows to VAPOR T2';'[kg/sec] (+ in, - out)'});
 xlim([0 data.t(end)/60]);
 ylim([-0.003 0.0005]);
 xlabel('Time (min)');
-legend('TOTAL mf', 'Evaporation mf','(-)Venting mf','Boiling mf', 'Top-fill evaporation mf');
+legend('TOTAL mf', 'Evaporation mf','(-)Venting mf','Boiling mf', 'Signed top vapor inflow (flash + evap./cond.)');
 grid on;
 
 if save==1
