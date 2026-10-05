@@ -65,7 +65,7 @@ for z=1:length(Simulation.rhov1)
         
         Simulation.rho_L2(z) = refpropm('D','P',(Simulation.pv2(z)+1)/1000,'U',Simulation.uL2(z,ii),'PARAHYD');
         Simulation.Jv10(z) = Simulation.Jboil(z) -Simulation.Jvvalve1(z) - Simulation.Jcd1(z) + Simulation.ZAA(z);
-        Simulation.Jv20(z) = -Simulation.Jvvalve2(z) - Simulation.Jcd2(z) + Simulation.ZBB(z);
+        Simulation.Jv20(z) = -Simulation.Jvvalve2(z) - Simulation.Jcd2(z) + Simulation.ZBB(z) + Simulation.JvEvapTopfill(z); % Filtered signed top vapor inflow (ZKK).
         
         % waitbartime(z/length(Simulation.rhov1),h);
         waitbar(z/length(Simulation.rhov1),h,sprintf('Extracting data. please wait... %2.2f%%',(z/length(Simulation.rhov1)*100))) % Simpler waitbar, without time estimation
@@ -96,7 +96,7 @@ close(h) % close waitbar
     end
     
     Simulation.Jv10 = Simulation.Jboil -Simulation.Jvvalve1 - Simulation.Jcd1 + Simulation.ZAA;
-    Simulation.Jv20 = -Simulation.Jvvalve2 - Simulation.Jcd2 + Simulation.ZBB;
+    Simulation.Jv20 = -Simulation.Jvvalve2 - Simulation.Jcd2 + Simulation.ZBB + Simulation.JvEvapTopfill; % All diagnostic rates are first-order filtered.
     disp('Data extraction done');
     
     

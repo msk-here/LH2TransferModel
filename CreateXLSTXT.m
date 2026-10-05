@@ -43,6 +43,13 @@ Units = [" ";" ";" ";"s";"kg";"kg";"kg";"kg";"kg boiloff/kg transferred";"kg/s";
     "bar";"bar";"%";"kg";"kg";"kg";"K";"K";
     "liters";"liters";"bar";"bar";" "];
 
+% Append top-fill settings when available, preserving all existing entries.
+if all(isfield(var1, {'TF_mode', 'TF_r', 'TF_D_d'}))
+    Parameter = [Parameter; "TF_mode"; "TF_r"; "TF_D_d"];
+    FinalValue = [FinalValue; string(var1.TF_mode); var1.TF_r; var1.TF_D_d];
+    Units = [Units; " "; " "; "m"];
+end
+
 ResultsTable=table(Parameter,FinalValue,Units);
 
 % Saving table to .txt file
