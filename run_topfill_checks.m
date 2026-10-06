@@ -189,6 +189,8 @@ blocks = cell(size(names));
 for k = 1:numel(names)
     value = data.(names{k});
     if strcmp(names{k}, 't') || ~isnumeric(value), continue; end
+    % Guard counters are run metadata, rather than columns of xout.
+    if any(strcmp(names{k}, {'TF_guardCount', 'TF_guardMaxTrialPressure'})), continue; end
     assert(isa(value, 'double') && isreal(value) && ismatrix(value) && ...
         size(value, 1) == numel(data.t) && all(isfinite(value(:))), ...
         'Invalid saved state field %s.', names{k});

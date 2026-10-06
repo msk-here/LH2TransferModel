@@ -33,6 +33,22 @@ assert((ischar(P.TF_mode) && isrow(P.TF_mode)) || ...
 assert(any(strcmp(P.TF_mode, {'spray', 'jet'})), ...
     'TF_mode must be spray or jet.');
 tf_active = (Topfill == 1) && P.TF_r > 0;
+tf_guardCount = 0;
+tf_guardMaxTrialPressure = 0;
+tf_stopReason = 'completed';
+if tf_active
+    tf_pcrit = refpropm('P','C',0,' ',0,'PARAHYD')*1e3;
+    tf_guardFraction = 0.999;
+    if isfield(P, 'TF_pGuardFraction')
+        tf_guardFraction = P.TF_pGuardFraction;
+    end
+    tf_stopFraction = 0.99;
+    if isfield(P, 'TF_pcritStopFraction')
+        tf_stopFraction = P.TF_pcritStopFraction;
+    end
+    tf_pguard = tf_guardFraction*tf_pcrit;
+    tf_pstop = tf_stopFraction*tf_pcrit;
+end
 P.initial_ratio_top_bottom = 0; % Eq. (21): exclude every legacy split.
 P.bulkevap_ratio_top_bottom = 0;
 
@@ -699,6 +715,12 @@ function dxdt = LH2dxdt(P,t,x)
         sTF = struct('h_in', htr_L, 'v_in', vtr, ...
             'p_v', pv2, 'T_v', Tv2(P.nV2), 'rho_v', rhov2, ...
             'H_ullage', (P.VTotal2-VL2)/P.A2); % Eq. (1): actual delivered state.
+        if pv2 >= tf_pguard
+            % Guard only the saturation input for unaccepted ODE trial states.
+            sTF.p_v = tf_pguard;
+            tf_guardCount = tf_guardCount+1;
+            tf_guardMaxTrialPressure = max(tf_guardMaxTrialPressure, pv2);
+        end
         TF = topfill_sources(P.TF_mode, J_top, sTF, P);
         JL2 = J_bot+TF.J_top_liq+Jcd2-Jevap2; % Eq. (22).
         Jv2 = TF.J_top_vap-Jvvalve2-Jcd2+Jevap2;
@@ -923,7 +945,11 @@ end
 while tout(end) < P.tFinal
     %Solve until the first terminal event
         refine = 4;
-        VentEvent = @(t,x) VentEvents(x,P,ETTVentState);
+        if tf_active
+            VentEvent = @(t,x) VentEvents(x,P,ETTVentState,tf_pstop);
+        else
+            VentEvent = @(t,x) VentEvents(x,P,ETTVentState);
+        end
 
         try
             nt = length(t);
@@ -955,7 +981,19 @@ while tout(end) < P.tFinal
         x0=x0(1:end-1); % last column (ETTVentState) is removed
    
         tstart = t(nt);
-        ETTVentState = abs(ETTVentState - 1);
+        if tf_active
+            criticalEvent = find(ie == 3, 1, 'first');
+            if ~isempty(criticalEvent)
+                tf_stopReason = sprintf('ET pressure reached %.15g of p_crit at t = %.15g s', ...
+                    tf_stopFraction, te(criticalEvent));
+                break;
+            end
+            if any(ie == 2) || (ETTVentState > 0 && any(ie == 1))
+                ETTVentState = abs(ETTVentState - 1);
+            end
+        else
+            ETTVentState = abs(ETTVentState - 1);
+        end
 end
     
     % close waitbar
@@ -1035,6 +1073,13 @@ end
     if HydrogenTransfer==0
         data.ProcComp(end)=1;
     end
+
+    data.StopReason = tf_stopReason;
+    data.TF_guardCount = tf_guardCount;
+    data.TF_guardMaxTrialPressure = tf_guardMaxTrialPressure; % [Pa]
+    fprintf('Stop reason: %s\n', data.StopReason);
+    fprintf('TF_guardCount = %d; TF_guardMaxTrialPressure = %.15g Pa\n', ...
+        data.TF_guardCount, data.TF_guardMaxTrialPressure);
     
 end
 
@@ -1125,7 +1170,7 @@ function pv=vaporpressure(uv,rhov)
 end
 
 
-function [value,isterminal,direction] = VentEvents(x,P,ventstate) 
+function [value,isterminal,direction] = VentEvents(x,P,ventstate,p_stop)
 % Stops ODE solver every time the state of the vent valve in (ET) changes
 rho_L22= -5.12074746E-07*(x(P.nL1+P.nV1+P.nL2+7)/1000)^3 - 1.56628367E-05*(x(P.nL1+P.nV1+P.nL2+7)/1000)^2 - 1.18436797E-01*(x(P.nL1+P.nV1+P.nL2+7)/1000) + 7.06218354E+01;
 VL22 = x(P.nL1+P.nV1+7)/rho_L22;
@@ -1141,6 +1186,11 @@ else
 end
 
 direction =  [-1; +1];     % value of +1 locates only zeros where the event function is increasing, and -1 locates only zeros where the event function is decreasing.
+if nargin > 3
+    value = [value; p22-p_stop];
+    isterminal = [isterminal; 1];
+    direction = [direction; +1];
+end
 
 end
 
