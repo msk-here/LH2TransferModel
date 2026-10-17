@@ -229,7 +229,7 @@ if save==1
 end
 
 %% Figure 7: Mass flows for vapor phases.
-if Case==4 || Case==2
+if ~isfield(data,'YYY')
     figure
     set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.15 0.15 0.7 0.7]); % Enlarge figure to 70% of full screen.
     set(gcf,'defaultLineLineWidth',0.8)
@@ -277,7 +277,7 @@ if save==1
 end
 
 %% Figure 8: Energy balance in T1 
-if Case==4 || Case==2
+if ~isfield(data,'YYY')
     figure;
     set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.15 0.15 0.7 0.7]); % Enlarge figure to 70% of full screen.
     
@@ -346,7 +346,7 @@ ylim([-5 1])
 xlabel('Time [min]');
 grid on;
 
-if ~isfield(data,'YYY')   % run had no pump (pressure-gradient solver); was: if Case==4 || Case==2
+if ~isfield(data,'YYY')   % Pressure-gradient solver.
     subplot(2,1,2);
     u=plot(data.t/60,data.SSS/1000,data.t/60,data.TTT/1000,data.t/60,data.OOO/1000,data.t/60,data.UUU/1000,data.t/60,data.VVV/1000,data.t/60,data.XXX/1000);
     u(6).LineWidth = 2;
@@ -734,7 +734,7 @@ legend('Relative Venting T2','Location','northwest');
 grid on;
 xlim([0 data.t(end)/60]);
 % xlim([0 4.5]);
-ylim([0 max(data.Boiloff_ET/TransferredMass*100)+0.5]);
+relative_vent_limits(data.Boiloff_ET/TransferredMass*100);
 yticks(0:1:25)
 %xticks(0:.5:8)
 
@@ -768,7 +768,7 @@ legend('Relative Venting T1','Relative Venting T2','Total relative Venting','Loc
 grid on;
 xlim([0 data.t(end)/60]);
 % xlim([0 4.5]);
-ylim([0 max((data.Boiloff_ET+data.Boiloff_ST)/UsedMass*100)+0.5]);
+relative_vent_limits((data.Boiloff_ET+data.Boiloff_ST)/UsedMass*100);
 yticks(0:1:15)
 %xticks(0:.5:8)
 
@@ -819,4 +819,12 @@ if save==1
     saveas(gcf,path+"Fig21.png")
     saveas(gcf,path+"Fig21.fig")
 end
-end 
+end
+end % plotLH2Data
+
+function relative_vent_limits(values)
+% A stationary/zero-transfer run has undefined relative venting (NaN/Inf).
+% Keep those diagnostic values, but do not pass them to axis limits.
+values = values(isfinite(values));
+ylim([0 max([0; values(:)])+0.5]);
+end

@@ -130,7 +130,7 @@ LH2Model.p_ET_final = 45*psiToPa;      % [Pa] final venting pressure for (ET) (=
 
 
 LH2Model.TopET = 0.9;                  % [] maximum fraction full for ET, when fill stops. Value should be between 0 and 1 (0.9 = 90%)
-if Topfill
+if TopBottomRatio > 0
     LH2Model.ETinletdiameter = 0.02;
     LH2Model.ETnozzleamout = 1;
     LH2Model.ConvCoeffTopfill = 7000;

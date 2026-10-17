@@ -117,7 +117,7 @@ LH2Model.dE = 0.35*inTom;		       % [m] transfer line valve diameter (10 in.)
 LH2Model.kE = 4;				       % [] transfer line valve coefficient
 
 % Top fill (ignore if deactivated)
-if Topfill
+if TopBottomRatio > 0
     LH2Model.ETinletdiameter = 0.02;         % [m] Diameter of inlet nozzle
     LH2Model.ETnozzleamout=1;
     LH2Model.ConvCoeffTopfill = 7000;           % Number of nozzles to simulate spray

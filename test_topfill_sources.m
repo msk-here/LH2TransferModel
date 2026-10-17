@@ -101,6 +101,16 @@ for k = 1:numel(names)
     assert(~isempty(P.(names{k})), 'Empty default P.%s.', names{k});
 end
 assert(~P.TF_enabled && strcmp(P.TF_mode, 'spray') && P.TF_r == 0);
+stale = P;
+stale.TF_enabled = true;
+stale.TF_mode = 'ignored at zero';
+stale = Parameters_topfill_defaults(stale);
+assert(~stale.TF_enabled, 'Legacy metadata must not activate top filling.');
+stale.TF_r = 0.3;
+stale.TF_mode = 'jet';
+stale.TF_enabled = false;
+stale = Parameters_topfill_defaults(stale);
+assert(stale.TF_enabled, 'A positive ratio must activate top filling.');
 assert(P.TF_D_d == 0.006 && P.TF_D_0 == 0.02 && strcmp(P.TF_ReBasis, 'tenDamme'));
 assert(P.TF_ell_g == (P.VTotal2-P.VL20)/P.A2 && P.TF_C_j == 1);
 q = P;

@@ -1,10 +1,17 @@
-function UpdateXLSLog(var1,var2,path,dateandtime,Case,Topfill)
+function UpdateXLSLog(var1,var2,path,dateandtime,Case)
 
+% Custom/blowdown scenarios have no compatible legacy template sheet.
+% Write a separate, self-describing per-run report, never into a legacy sheet.
+if any(Case == [6 7 8])
+    if ~isfolder(path), mkdir(path); end
+    CreateXLSTXT(var1,var2,path,dateandtime,Case);
+    return;
+end
 filename=path+"ResultsLog.xlsx";
 
 % Obtaining Scenario and Method
-CM=CaseMethod(Case);
-TF=TopBottom(Topfill);
+CM=scenario_metadata(Case);
+TF=TopBottom(var1.TF_r);
 
 % Finding the index for when the process is considered finished.
 if isempty(find(var2.ProcComp,1,'first'))
@@ -56,27 +63,12 @@ end
 
 end
 
-function A=CaseMethod(Case) % Function to obtain Scenario and Method
-if Case==1
-    A.Scenario = "Original";
-    A.Method = "Pres. diff.";
-elseif Case==2
-    A.Scenario = "Trailer to Main";
-    A.Method = "Pres. diff.";
-elseif Case==3
-    A.Scenario = "Trailer to Main";
-    A.Method = "Pump";
-elseif Case==4
-    A.Scenario = "Main to On-board";
-    A.Method = "Pres. diff.";
-else
-    A.Scenario = "Main to On-board";
-    A.Method = "Pump";
-end
-end
+
 function TOPBOT=TopBottom(T) % Function to obtain Scenario and Method
 if T==1
     TOPBOT = "Top-fill";
+elseif T > 0
+    TOPBOT = "Hybrid (r=" + string(T) + ")";
 else
     TOPBOT = "Bottom-fill";
 end

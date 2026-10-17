@@ -5,7 +5,7 @@ filenamexls=path+"MainResults_"+dateandtime+"_"+var1.name+".xls";
 filenametxt=path+"MainResults_"+dateandtime+"_"+var1.name+".txt";
 
 % Obtaining Scenario and Method
-CM=CaseMethod(Case);
+CM=scenario_metadata(Case);
 
 % Finding the index for when the process is considered finished.
 if isempty(find(var2.ProcComp,1,'first'))
@@ -56,23 +56,4 @@ ResultsTable=table(Parameter,FinalValue,Units);
 writetable(ResultsTable,filenamexls)
 writetable(ResultsTable,filenametxt)
 
-end
-
-function A=CaseMethod(Case) % Function to obtain Scenario and Method
-if Case==1
-    A.Scenario = "Original";
-    A.Method = "Pres. diff.";
-elseif Case==2
-    A.Scenario = "Trailer to Main";
-    A.Method = "Pres. diff.";
-elseif Case==3
-    A.Scenario = "Trailer to Main";
-    A.Method = "Pump";
-elseif Case==4
-    A.Scenario = "Main to On-board";
-    A.Method = "Pres. diff.";
-else
-    A.Scenario = "Main to On-board";
-    A.Method = "Pump";
-end
 end

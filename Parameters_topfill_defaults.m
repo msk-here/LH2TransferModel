@@ -1,6 +1,6 @@
 function P = Parameters_topfill_defaults(P)
 %PARAMETERS_TOPFILL_DEFAULTS Revision 3, Section 7 parameter register.
-% Existing fields are never overwritten. All new defaults are populated.
+% Existing physical settings are preserved; TF_enabled is always derived from TF_r.
 % Numerical choices below implement the user's completion decisions.
 % This function reads only common geometry and optional ETinletdiameter.
 
@@ -9,9 +9,9 @@ if ~isstruct(P) || ~isscalar(P)
         'P must be a scalar LH2Model parameter struct.');
 end
 
-P = add_default(P, 'TF_enabled', false); % [-] Section 7: user; assumed disabled.
 P = add_default(P, 'TF_mode', 'spray'); % [-] Section 7: assumed initial mode.
 P = add_default(P, 'TF_r', 0); % [-] Eq. (47); assumed baseline-preserving split.
+P.TF_enabled = validate_fill_configuration(P.TF_r, P.TF_mode);
 P = add_default(P, 'TF_D_d', 0.006); % [m] P10 Table 6, p. 28: reference diameter.
 P = add_default(P, 'TF_ReBasis', 'tenDamme'); % [-] Eq. (27); P10 Fig. 12 review.
 

@@ -1,10 +1,12 @@
 # refpropm → CoolProp shim: verified findings
 
-Everything below was checked against the actual upstream source
+The original shim audit below was checked against the actual upstream source
 (`Albert-Gil/LH2TransferModel`, cloned fresh), against NIST's own
 `refpropm.m` (`usnistgov/REFPROP-wrappers`, `wrappers/MATLAB/legacy/`), and
 against CoolProp numerically. Where something is inference rather than
-verification it says so explicitly.
+verification it says so explicitly. Historical line numbers and call counts refer
+to that audit, not the current expanded model. Current integration findings are
+recorded in Section 6.
 
 ---
 
@@ -134,13 +136,13 @@ liquid and superheated vapour, which makes debug output useless.
 | `B` | volumetric expansivity [1/K] | NIST header; verified β·T → 1 in the dilute limit |
 | `O` / `C` | cv / cp | verified cp > cv everywhere, and cp/cv → 5/3 at 40 K (matches the model's own `gamma_ = 5/3`) |
 
-### 1.6 Call inventory
+### 1.6 Historical call inventory
 
-204 `refpropm` occurrences, of which **18 are commented out**, leaving
+The audited upstream snapshot contained 204 `refpropm` occurrences, of which **18 are commented out**, leaving
 **186 active**. The handoff's per-code frequencies count the commented
 ones; the set of 15 codes is identical either way.
 
-All 186 active calls are 6-argument, single-output — confirming "no
+All 186 active calls in that snapshot were 6-argument, single-output — confirming "no
 multi-output call sites". The shim supports multi-output anyway (for the
 LLNL fork), via the standard `[a,b] = refpropm('AB',...)` form.
 
@@ -151,12 +153,13 @@ All eight are natively supported by `PropsSI` — no fallbacks needed.
 
 ## 2. Things that will bite when you run `MAIN.m`
 
-1. **`MAIN.m:16` defaults to `Case=2`**, which is Trailer→Main by pressure
-   difference and runs `LH2Simulate.m`. For paper Fig. 4 you need
-   **`Case=5`** (Main→On-board, pump), which runs `LH2Simulate_Pump.m`.
-2. **Hardcoded absolute Windows paths** at lines 34, 38, 42, 46 point at
-   `C:\Users\alber\...`. With `SavePlots=1`, `SaveResults=1`,
-   `UpdateLog=1` these will fail. Repoint them or set the flags to 0.
+1. **`MAIN.m` currently defaults to `Case=3`**, Trailer→Main by pump.
+   Case 5 selects Main→On-board by pump. Cases 7/8 select custom pressure/pump
+   configurations; see the README before choosing inputs for a paper comparison.
+2. **Output paths currently default to `results\`**, relative to the working
+   directory. Check the output flags and paths before running. Legacy Excel
+   logging for Cases 1–5 still requires its existing workbook template; custom
+   and blowdown cases write separate reports.
 3. **`LH2Model.T_c = 32.938`** (`Parameters_*.m:33`) is hardcoded and sits
    **1.45e-4 K above** the true Tcrit (32.937855…). It only feeds
    `Ts0 = T_c*(p/p_c)^(1/λ)`, and for p ≤ 12 bar that gives Ts ≤ 32.49 K,
@@ -198,7 +201,7 @@ behind those figures differs from what is written.
 **Practical consequence:** validate against Fig. 4 only, and if Fig. 5 or
 Fig. 12 do not reproduce, that is not evidence your shim is broken.
 
-### Parameter deltas: shipped file vs paper Scenario B table
+### Historical parameter deltas: upstream file vs paper Scenario B table
 
 | quantity | paper Table | `Parameters_MainToOnboard_Pump.m` |
 |---|---|---|
@@ -212,12 +215,13 @@ Fig. 12 do not reproduce, that is not evidence your shim is broken.
 | Flow setpoint | 30 kg/min | 30 kg/min ✓ (line 139) |
 | SOC window | 0→100 % | 10 %→90 % ✓ (lines 79, 154) |
 
-The MWP, vent hysteresis, flow setpoint and SOC window all match Fig. 4
-exactly, and `PumpMassTransferSlow = 15 kg/min` matches the paper's "50 %
-of setpoint" initial stage. So this **is** the Fig. 4 configuration —
-but you will likely need `p20 = 5*barToPa` to match the reported venting,
-since venting is strongly dependent on tank 2 initial pressure (paper
-§3.4.1). Change it as its own commit so the effect is isolated.
+The table above describes the original upstream snapshot. In the current local
+`Parameters_MainToOnboard_Pump.m`, `p20=5 bar`, `initialfillfraction=0.65`,
+`TL20=25 K` and `Tw20=25 K`; these have already changed from that snapshot.
+The vapor temperatures still use the pressure-based correlation. These local
+settings are not, by themselves, evidence of agreement with the paper. Preserve
+configuration provenance when comparing runs; earlier regression results apply
+to the parameter files used for those runs.
 
 ---
 
@@ -241,3 +245,51 @@ subset (all but `S` and `Y`), it should drop in unchanged.
 Unsupported codes raise `refpropm:unsupportedProperty` rather than
 returning anything — add new codes deliberately, after checking both
 `refpropm.m` and the call site.
+
+
+## 6. Custom-scenario integration and current verification
+
+The custom-scenario/fill-control implementation leaves `refpropm.m` and its
+property interface unchanged: pressure arguments/results use kPa, viscosity is
+Pa·s, and thermodynamic mass-specific quantities retain the existing conventions.
+The current top-fill model uses multi-output property requests and optional
+`PARAHYD|gas` / `PARAHYD|liquid` phase hints already supported by the shim.
+The historical single-output inventory in Section 1.6 does not describe these
+additional calls. Cache configuration remains `CACHE_ENABLED = false`.
+
+Runtime helpers required by the current model:
+
+- `initialize_custom_parameters.m`: applies custom inputs and rebuilds dependent
+  geometry, thermodynamic inventories and operational defaults for Cases 7/8.
+- `scenario_metadata.m`: validates and identifies all eight scenarios for dispatch
+  and output/export labeling.
+- `validate_fill_configuration.m`: validates the ratio and active spray/jet mode;
+  `TF_enabled` is derived from `TF_r > 0`.
+
+`run_scenario_checks.m` is a regression tool, not a runtime dependency. Keep it
+with the repository to verify custom initialization, stationary behavior, output
+integration and optional comparisons with a pre-change snapshot.
+
+Verification evidence from this implementation session:
+
+- `validate_shim`: 42/42 passed with MATLAB R2026a, Python 3.13.15 and
+  CoolProp 8.0.0.
+- User-supplied completed `run_topfill_checks` output: 15/15 aggregate checks,
+  50/50 source tests, and 20/20 simulations completed to 120 s using ode45.
+  Reported runtime: 3231.950 s (53 min 51.950 s).
+- Cases 1–6 had bitwise-identical current-code bottom-fill histories and time
+  grids with spray versus jet selected at zero ratio. This is not a 120-second
+  comparison against the original repository revision.
+- All eight active configurations for Cases 4/5 completed. These checks require
+  completion, finite states and a finite mass diagnostic; they do not impose a
+  host mass-residual acceptance threshold.
+- Case 5 hybrid jet (`r=0.3`) reported a mass residual of −0.0829977203 kg
+  (about 0.167% of its inventory increase). Its cause remains unverified; the
+  filtered vent diagnostic means this alone does not prove a conservation defect.
+  Source-level mass/energy identity tests passed separately.
+
+The completed suite covers Cases 1–6. Cases 7/8 were verified separately with
+short active-flow and stationary smoke runs, not full 120-second custom runs.
+See `VERIFICATION_CUSTOM_SCENARIOS.md` for implementation details and the initial
+verification history; the user-supplied completed result above supersedes the
+previous incomplete-suite status.

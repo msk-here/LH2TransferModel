@@ -12,7 +12,6 @@ try
 	P = evalin('base','LH2Model');
     odesolver = evalin ('base','odesolver');
     HydrogenTransfer = evalin ('base','HydrogenTransfer');
-    Topfill = evalin ('base','Topfill');
 catch ME
 	if strcmp(ME.identifier,'MATLAB:UndefinedFunction')
 		evalin('base','LH2ModelParams');
@@ -24,15 +23,7 @@ end
 
 % Constant top-branch configuration; Eq. (50) preserves the zero-split path.
 P = Parameters_topfill_defaults(P);
-assert(isnumeric(P.TF_r) && isreal(P.TF_r) && isscalar(P.TF_r) && ...
-    isfinite(P.TF_r) && P.TF_r >= 0 && P.TF_r <= 1, ...
-    'TF_r must be a constant fraction in [0,1].');
-assert((ischar(P.TF_mode) && isrow(P.TF_mode)) || ...
-    (isstring(P.TF_mode) && isscalar(P.TF_mode)), ...
-    'TF_mode must be spray or jet.');
-assert(any(strcmp(P.TF_mode, {'spray', 'jet'})), ...
-    'TF_mode must be spray or jet.');
-tf_active = (Topfill == 1) && P.TF_r > 0;
+tf_active = P.TF_r > 0; % Exact inactive dispatch at zero ratio.
 tf_guardCount = 0;
 tf_guardMaxTrialPressure = 0;
 tf_stopReason = 'completed';

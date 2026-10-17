@@ -40,9 +40,9 @@ results(end+1) = record('C1 test_topfill_sources', module_ok, module_numbers);
 
 completed_runs = 0;
 for case_number = 1:6
-    fprintf('Running C2 Case %d: bottom fill and top enabled with r=0.\n', case_number);
-    bottom = run_case(case_number, 0, 'spray', 0, solver, t_final);
-    zero_split = run_case(case_number, 1, 'spray', 0, solver, t_final);
+    fprintf('Running C2 Case %d: bottom fill with spray/jet ignored at r=0.\n', case_number);
+    bottom = run_case(case_number, 'spray', 0, solver, t_final);
+    zero_split = run_case(case_number, 'jet', 0, solver, t_final);
     completed_runs = completed_runs+bottom.completed+zero_split.completed;
     if bottom.completed && zero_split.completed
         [identical, difference_count, max_state_difference, max_time_difference] = ...
@@ -73,7 +73,7 @@ for case_number = [5, 4]
         mode = modes{configuration};
         ratio = ratios(configuration);
         fprintf('Running C3 Case %d: %s r=%.3g.\n', case_number, mode, ratio);
-        run = run_case(case_number, 1, mode, ratio, solver, t_final);
+        run = run_case(case_number, mode, ratio, solver, t_final);
         completed_runs = completed_runs+run.completed;
         delta_mass = NaN;
         integrated_flow = NaN;
@@ -125,7 +125,7 @@ fprintf(['SUMMARY: %s | solver=%d tFinal=%g s CHECKS_PASS=%d CHECKS_FAIL=%d ' ..
     module_passes, module_total, completed_runs, toc(suite_timer));
 end
 
-function run = run_case(case_number, topfill, mode, ratio, solver, t_final)
+function run = run_case(case_number, mode, ratio, solver, t_final)
 run = struct('completed', false, 'runtime', 0, 'samples', 0, ...
     't_end', NaN, 'error', 'none', 'data', struct(), 'history', [], 'fields', {{}});
 reset_globals();
@@ -143,13 +143,12 @@ try
     assignin('base', 'Case', case_number);
     assignin('base', 'odesolver', solver);
     assignin('base', 'HydrogenTransfer', 1);
-    assignin('base', 'Topfill', topfill);
+    assignin('base', 'TopBottomRatio', ratio);
     assignin('base', 'LH2Model', struct('name', string(case_names{case_number})));
     % The parameter scripts also read base variables and clear LH2Model.
     evalin('base', parameter_files{case_number});
     P = evalin('base', 'LH2Model');
     P.tFinal = t_final; % Override the scenario duration AFTER initialization.
-    P.TF_enabled = (topfill == 1);
     P.TF_mode = mode;
     P.TF_r = ratio;
     P = Parameters_topfill_defaults(P);

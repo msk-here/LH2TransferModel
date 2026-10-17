@@ -3,21 +3,21 @@
 %        (ET) or 2 is station storage (vertical cylinder)
 
 name = evalin ('base', 'LH2Model.name');
-Topfill = evalin ('base','Topfill');
+TopBottomRatio = evalin ('base','TopBottomRatio');
 clear LH2Model;
 HydrogenTransfer = evalin ('base','HydrogenTransfer');
 LH2Model.name = name;
 
 % Constant parameters
-psiToPa = 6894.75729;        % conversion factor, psi to Pascals
+psiToPa = 6894.757293168361;        % conversion factor, psi to Pascals %Previously 6894.75729 
 barToPa = 100000;              % conversion factor, bar to Pascals
-galTom3 = 0.00378541;        % conversion factor, from gallons to cubic meters
+galTom3 = 0.003785411784;        % conversion factor, from gallons to cubic meters % 0.00378541 US Gallon to m3
 litersTom3=0.001;            % conversion factor, from liters to cubic meters
 inTom = 0.0254;              % conversion factor, from inches to meters
 kgminTokgsec = 1/60;         % conversion factor, from kg/min to kg/sec
 dayTosec = 24*60*60;       % conversion factor, from day to sec
 LH2Model.p_atm = 1.01325e5;	 % [Pa] pressure of atmosphere
-LH2Model.g = 9.81;			 % [m/s^2] acceleration due to gravity
+LH2Model.g = 9.80665;			 % [m/s^2] acceleration due to gravity % Previously was 9.81
 
 % Tank geometry parameters
 LH2Model.VTotal1 = 18000*litersTom3;          % [m^3]total volume of (ST)    
@@ -118,7 +118,7 @@ LH2Model.dE = 0.35*inTom;		       % [m] transfer line valve diameter (10 in.)
 LH2Model.kE = 4;				       % [] transfer line valve coefficient
 
 % Top fill (ignore if deactivated)
-if Topfill
+if TopBottomRatio > 0
     LH2Model.ETinletdiameter = 0.02;         % [m] Diameter of inlet nozzle
     LH2Model.ETnozzleamout=1;
     LH2Model.ConvCoeffTopfill = 000;          
