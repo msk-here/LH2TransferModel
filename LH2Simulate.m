@@ -449,27 +449,27 @@ function dxdt = LH2dxdt(P,t,x)
     %---------------------
     % transport properties in the gas and liquid phases
     if refpropm('Q','D',rhov1,'U',uv1(P.nV1),'PARAHYD') < 1 && refpropm('Q','D',rhov1,'U',uv1(P.nV1),'PARAHYD') > 0     
-        P.kappa_v = refpropm('L','T',Tv1(P.nV1),'Q',1,'PARAHYD'); % REFPROP does not work here for qualities different than 1 or 0
-        P.mu_v = refpropm('V','T',Tv1(P.nV1),'Q',1,'PARAHYD');
-        P.cv_v = refpropm('O','T',Tv1(P.nV1),'Q',1,'PARAHYD'); % Cv
-        P.cp_v = refpropm('C','T',Tv1(P.nV1),'Q',1,'PARAHYD'); % Cp
-        beta_v = refpropm('B','T',Tv1(P.nV1),'Q',1,'PARAHYD');
+        propV1.kappa = refpropm('L','T',Tv1(P.nV1),'Q',1,'PARAHYD'); % REFPROP does not work here for qualities different than 1 or 0
+        propV1.mu = refpropm('V','T',Tv1(P.nV1),'Q',1,'PARAHYD');
+        propV1.cv = refpropm('O','T',Tv1(P.nV1),'Q',1,'PARAHYD'); % Cv
+        propV1.cp = refpropm('C','T',Tv1(P.nV1),'Q',1,'PARAHYD'); % Cp
+        propV1.beta = refpropm('B','T',Tv1(P.nV1),'Q',1,'PARAHYD');
     else
-        P.kappa_v = refpropm('L','D',rhov1,'U',uv1(P.nV1),'PARAHYD');
-        P.mu_v = refpropm('V','D',rhov1,'U',uv1(P.nV1),'PARAHYD');
-        P.cv_v = refpropm('O','D',rhov1,'U',uv1(P.nV1),'PARAHYD');% Cv
-        P.cp_v = refpropm('C','D',rhov1,'U',uv1(P.nV1),'PARAHYD');% Cp
-        beta_v = refpropm('B','D',rhov1,'U',uv1(P.nV1),'PARAHYD');
+        propV1.kappa = refpropm('L','D',rhov1,'U',uv1(P.nV1),'PARAHYD');
+        propV1.mu = refpropm('V','D',rhov1,'U',uv1(P.nV1),'PARAHYD');
+        propV1.cv = refpropm('O','D',rhov1,'U',uv1(P.nV1),'PARAHYD');% Cv
+        propV1.cp = refpropm('C','D',rhov1,'U',uv1(P.nV1),'PARAHYD');% Cp
+        propV1.beta = refpropm('B','D',rhov1,'U',uv1(P.nV1),'PARAHYD');
     end
     
-     P.kappa_L = refpropm('L','T',TL1(P.nL1),'Q',0,'PARAHYD');
-     P.cv_L = refpropm('O','T',TL1(P.nL1),'Q',0,'PARAHYD');% Cv
-     P.cp_L = refpropm('C','T',TL1(P.nL1),'Q',0,'PARAHYD');% Cp
-     beta_L = refpropm('B','T',TL1(P.nL1),'Q',0,'PARAHYD');
-     P.mu_L = refpropm('V','T',TL1(P.nL1),'Q',0,'PARAHYD');
+     propL1.kappa = refpropm('L','T',TL1(P.nL1),'Q',0,'PARAHYD');
+     propL1.cv = refpropm('O','T',TL1(P.nL1),'Q',0,'PARAHYD');% Cv
+     propL1.cp = refpropm('C','T',TL1(P.nL1),'Q',0,'PARAHYD');% Cp
+     propL1.beta = refpropm('B','T',TL1(P.nL1),'Q',0,'PARAHYD');
+     propL1.mu = refpropm('V','T',TL1(P.nL1),'Q',0,'PARAHYD');
       
     % set up grid for vapor in ST (count from interface to top)
-    lmin = sqrt(P.kappa_v*P.tminV1/P.c_v/rhov1);
+    lmin = sqrt(propV1.kappa*P.tminV1/P.c_v/rhov1);
     l_V1(1) = lmin/(1+exp(pi/2/sqrt(P.nV1)));			% h_0
     l12_V1(1) = lmin;									% h_1/2
     for i=2:P.nV1
@@ -478,7 +478,7 @@ function dxdt = LH2dxdt(P,t,x)
     end
     
     % set up grid for liquid in ST (count from interface to bottom)
-    lmin = sqrt(P.kappa_L*P.tminL1/P.cv_L/rho_L1);
+    lmin = sqrt(propL1.kappa*P.tminL1/propL1.cv/rho_L1);
     l_L1(1) = lmin/(1+exp(pi/2/sqrt(P.nL1)));			% h_0
     l12_L1(1) = lmin;									% h_1/2
     for i=2:P.nL1
@@ -486,15 +486,15 @@ function dxdt = LH2dxdt(P,t,x)
         l_L1(i) = sqrt(l12_L1(i-1)*l12_L1(i));			% h_i
     end  
    
-    hVS1_cond = P.kappa_v/l12_V1(1);
-    hVS1_conv = P.kappa_v*0.156*(P.g*beta_v*P.cp_v*rhov1^2*(Ts1-Tv1(P.nV1))/P.kappa_v/P.mu_v)^(1/3);
+    hVS1_cond = propV1.kappa/l12_V1(1);
+    hVS1_conv = propV1.kappa*0.156*(P.g*propV1.beta*propV1.cp*rhov1^2*(Ts1-Tv1(P.nV1))/propV1.kappa/propV1.mu)^(1/3);
     
-    hLS1_cond = P.kappa_L/l12_L1(1);
-    hLS1_conv = P.kappa_L*0.156*(P.g*beta_L*P.cp_L*rho_L1^2*abs(TL1(P.nL1)-Ts1)/P.kappa_L/P.mu_L)^(1/3);
+    hLS1_cond = propL1.kappa/l12_L1(1);
+    hLS1_conv = propL1.kappa*0.156*(P.g*propL1.beta*propL1.cp*rho_L1^2*abs(TL1(P.nL1)-Ts1)/propL1.kappa/propL1.mu)^(1/3);
         
     % heat flow terms (ST)
-    QdotLS1_cond = hLS1_cond*S1*(TL1(1)-Ts1) - l_L1(1)*P.cp_L*rho_L1*dTs1dt;
-    QdotLS1_conv = hLS1_conv*S1*(TL1(1)-Ts1)*(TL1(P.nL2)>Ts1);
+    QdotLS1_cond = hLS1_cond*S1*(TL1(1)-Ts1) - l_L1(1)*propL1.cp*rho_L1*dTs1dt;
+    QdotLS1_conv = hLS1_conv*S1*(TL1(1)-Ts1)*(TL1(P.nL1)>Ts1);
     if QdotLS1_conv>0
         QdotLS1 = max(QdotLS1_conv,QdotLS1_cond);
     else
@@ -502,7 +502,7 @@ function dxdt = LH2dxdt(P,t,x)
     end
 
     QdotVS1_conv = hVS1_conv*S1*(Tv1(1)-Ts1)*(Ts1>Tv1(P.nV1));
-    QdotVS1_cond = hVS1_cond*S1*(Tv1(1)-Ts1) - l_V1(1)*P.cv_v*rhov1*dTs1dt;
+    QdotVS1_cond = hVS1_cond*S1*(Tv1(1)-Ts1) - l_V1(1)*propV1.cv*rhov1*dTs1dt;
     if QdotVS1_conv<0
         QdotVS1 = min(QdotVS1_conv,QdotVS1_cond);
     else
@@ -516,44 +516,44 @@ function dxdt = LH2dxdt(P,t,x)
     if quality2 < 1 && quality2 > 0
     %if refpropm('Q','D',rhov2,'U',uv2(P.nV2),'PARAHYD') < 1 && refpropm('Q','D',rhov2,'U',uv2(P.nV2),'PARAHYD') > 0
         Pr = refpropm('^','T',Tv2(P.nV2),'Q',1,'PARAHYD'); % REFPROP does not work here for qualities different than 1 or 0
-        P.kappa_v = refpropm('L','T',Tv2(P.nV2),'Q',1,'PARAHYD');
-        P.mu_v = refpropm('V','T',Tv2(P.nV2),'Q',1,'PARAHYD');
-        P.cv_v = refpropm('O','T',Tv2(P.nV2),'Q',1,'PARAHYD'); % Cv
-        P.cp_v = refpropm('C','T',Tv2(P.nV2),'Q',1,'PARAHYD'); % Cp
-        beta_v = refpropm('B','T',Tv2(P.nV2),'Q',1,'PARAHYD');
+        propV2.kappa = refpropm('L','T',Tv2(P.nV2),'Q',1,'PARAHYD');
+        propV2.mu = refpropm('V','T',Tv2(P.nV2),'Q',1,'PARAHYD');
+        propV2.cv = refpropm('O','T',Tv2(P.nV2),'Q',1,'PARAHYD'); % Cv
+        propV2.cp = refpropm('C','T',Tv2(P.nV2),'Q',1,'PARAHYD'); % Cp
+        propV2.beta = refpropm('B','T',Tv2(P.nV2),'Q',1,'PARAHYD');
     else
         Pr = refpropm('^','D',rhov2,'U',uv2(P.nV2),'PARAHYD');
-        P.kappa_v = refpropm('L','D',rhov2,'U',uv2(P.nV2),'PARAHYD');
-        P.mu_v = refpropm('V','D',rhov2,'U',uv2(P.nV2),'PARAHYD');
-        P.cv_v = refpropm('O','D',rhov2,'U',uv2(P.nV2),'PARAHYD');% Cv
-        P.cp_v = refpropm('C','D',rhov2,'U',uv2(P.nV2),'PARAHYD');% Cp
-        beta_v = refpropm('B','D',rhov2,'U',uv2(P.nV2),'PARAHYD');
+        propV2.kappa = refpropm('L','D',rhov2,'U',uv2(P.nV2),'PARAHYD');
+        propV2.mu = refpropm('V','D',rhov2,'U',uv2(P.nV2),'PARAHYD');
+        propV2.cv = refpropm('O','D',rhov2,'U',uv2(P.nV2),'PARAHYD');% Cv
+        propV2.cp = refpropm('C','D',rhov2,'U',uv2(P.nV2),'PARAHYD');% Cp
+        propV2.beta = refpropm('B','D',rhov2,'U',uv2(P.nV2),'PARAHYD');
     end
     
-    nuv2 = P.mu_v/rhov2;  % kinematic viscosity for vapor phase
-    Ra = abs(P.g* beta_v*(Tw2-Tv2(P.nV2))*(P.H-hL2)^3*Pr/nuv2^2);
+    nuv2 = propV2.mu/rhov2;  % kinematic viscosity for vapor phase
+    Ra = abs(P.g* propV2.beta*(Tw2-Tv2(P.nV2))*(P.H-hL2)^3*Pr/nuv2^2);
     Psi = (1+(0.492/Pr)^(9/16))^(-16/9);
     Nu = 0.68+0.503*(Ra*Psi)^(1/4);
 
     % transport properties for convection between wall and liquid
     Pr_L = refpropm('^','T',TL2(P.nL2),'Q',0,'PARAHYD');
-    P.kappa_L = refpropm('L','T',TL2(P.nL2),'Q',0,'PARAHYD');
-    P.mu_L = refpropm('V','T',TL2(P.nL2),'Q',0,'PARAHYD');
-    P.cv_L = refpropm('O','T',TL2(P.nL2),'Q',0,'PARAHYD');% Cv
-    P.cp_L = refpropm('C','T',TL2(P.nL2),'Q',0,'PARAHYD');% Cp
-    beta_L = refpropm('B','T',TL2(P.nL2),'Q',0,'PARAHYD');
-    nuL2 = P.mu_L/rho_L2; % viscosity for liquid phase
+    propL2.kappa = refpropm('L','T',TL2(P.nL2),'Q',0,'PARAHYD');
+    propL2.mu = refpropm('V','T',TL2(P.nL2),'Q',0,'PARAHYD');
+    propL2.cv = refpropm('O','T',TL2(P.nL2),'Q',0,'PARAHYD');% Cv
+    propL2.cp = refpropm('C','T',TL2(P.nL2),'Q',0,'PARAHYD');% Cp
+    propL2.beta = refpropm('B','T',TL2(P.nL2),'Q',0,'PARAHYD');
+    nuL2 = propL2.mu/rho_L2; % viscosity for liquid phase
       
-    Ra_L_side = abs(P.g*beta_L*(Tw2-TL2(P.nL2))*(hL2)^3*Pr_L/nuL2^2);
+    Ra_L_side = abs(P.g*propL2.beta*(Tw2-TL2(P.nL2))*(hL2)^3*Pr_L/nuL2^2);
     Psi_L_side = (1+(0.492/Pr_L)^(9/16))^(-16/9); % Nusselt correlation for flow along vertical wall
     Nu_L_side = 0.68+0.503*(Ra_L_side*Psi_L_side)^(1/4);% Nusselt correlation for flow along vertical wall
-    Ra_L_bottom = abs(P.g*beta_L*(Tw2-TL2(P.nL2))*(P.R2/2)^3*Pr_L/nuL2^2); 
+    Ra_L_bottom = abs(P.g*propL2.beta*(Tw2-TL2(P.nL2))*(P.R2/2)^3*Pr_L/nuL2^2);
     Nu_L_bottom = 0.27 * (Ra_L_bottom)^(1/4);% Nusselt correlation for flow along horizontal plate
     
     
-    hWV2 = Nu*P.kappa_v/(P.H-hL2);
-    hWL2_side = Nu_L_side*P.kappa_L/(hL2);  
-    hWL2_bottom = Nu_L_bottom*P.kappa_L/(P.R2/2);
+    hWV2 = Nu*propV2.kappa/(P.H-hL2);
+    hWL2_side = Nu_L_side*propL2.kappa/(hL2);
+    hWL2_bottom = Nu_L_bottom*propL2.kappa/(P.R2/2);
 
     QdotWL2 = (Tw2-TL2(P.nL2))*(hWL2_bottom*P.A2+hWL2_side*2*pi*P.R2*hL2); % convection term, wall to liquid
     QdotWV2 = hWV2*(Tw2-Tv2(P.nV2))*(P.A2+2*pi*P.R2*(P.H-hL2));            % convection term, wall to vapor
@@ -563,7 +563,7 @@ function dxdt = LH2dxdt(P,t,x)
     %---------------------
     
     % set up grid for liquid in ET (count from interface to bottom)
-    lmin = sqrt(P.kappa_L*P.tminL2/P.cv_L/rho_L2);
+    lmin = sqrt(propL2.kappa*P.tminL2/propL2.cv/rho_L2);
     l_L2(1) = lmin/(1+exp(pi/2/sqrt(P.nL2)));			% h_0
     l12_L2(1) = lmin;									% h_1/2
     for i=2:P.nL2
@@ -572,7 +572,7 @@ function dxdt = LH2dxdt(P,t,x)
     end
     
     % set up grid for vapor in ET  (count from interface to top)
-    lmin = sqrt(P.kappa_v*P.tminV2/P.cv_v/rhov2);
+    lmin = sqrt(propV2.kappa*P.tminV2/propV2.cv/rhov2);
     l_V2(1) = lmin/(1+exp(pi/2/sqrt(P.nV2)));			% h_0
     l12_V2(1) = lmin;									% h_1/2
     for i=2:P.nV2
@@ -580,12 +580,12 @@ function dxdt = LH2dxdt(P,t,x)
         l_V2(i) = sqrt(l12_V2(i-1)*l12_V2(i));			% h_i
     end
     
-    hVS2_cond = P.kappa_v/l12_V2(1);
-    hVS2_conv = P.kappa_v*0.156*(P.g*beta_v*P.cp_v*rhov2^2*(Ts2-Tv2(P.nV2))/P.kappa_v/P.mu_v)^(1/3);
-    hLS2_cond = P.kappa_L/l12_L2(1);
-    hLS2_conv = P.kappa_L*0.156*(P.g*beta_L*P.cp_L*rho_L2^2*abs(TL2(P.nL2)-Ts2)/P.kappa_L/P.mu_L)^(1/3);
+    hVS2_cond = propV2.kappa/l12_V2(1);
+    hVS2_conv = propV2.kappa*0.156*(P.g*propV2.beta*propV2.cp*rhov2^2*(Ts2-Tv2(P.nV2))/propV2.kappa/propV2.mu)^(1/3);
+    hLS2_cond = propL2.kappa/l12_L2(1);
+    hLS2_conv = propL2.kappa*0.156*(P.g*propL2.beta*propL2.cp*rho_L2^2*abs(TL2(P.nL2)-Ts2)/propL2.kappa/propL2.mu)^(1/3);
 
-    QdotLS2_cond = hLS2_cond*P.A2*(TL2(1)-Ts2) - l_L2(1)*P.cp_L*rho_L2*dTs2dt;
+    QdotLS2_cond = hLS2_cond*P.A2*(TL2(1)-Ts2) - l_L2(1)*propL2.cp*rho_L2*dTs2dt;
     QdotLS2_conv = hLS2_conv*P.A2*(TL2(1)-Ts2)*(TL2(P.nL2)>Ts2);
     
     if QdotLS2_conv>0
@@ -595,7 +595,7 @@ function dxdt = LH2dxdt(P,t,x)
     end
 
     QdotVS2_conv = hVS2_conv*P.A2*(Tv2(1)-Ts2)*(Ts2>Tv2(P.nV2));
-    QdotVS2_cond = hVS2_cond*P.A2*(Tv2(1)-Ts2) - l_V2(1)*P.cv_v*rhov2*dTs2dt;
+    QdotVS2_cond = hVS2_cond*P.A2*(Tv2(1)-Ts2) - l_V2(1)*propV2.cv*rhov2*dTs2dt;
     
     if QdotVS2_conv<0
         QdotVS2 = min(QdotVS2_conv,QdotVS2_cond);
@@ -760,7 +760,7 @@ function dxdt = LH2dxdt(P,t,x)
             TL1im1 = TL1(i-1);
         end
         rho_L1i = refpropm('D','T',TL1(i),'Q',0,'PARAHYD');
-        duL1dt(i) = ((TL1(i+1)-TL1(i))/l12_L1(i+1)-(TL1(i)-TL1im1)/l12_L1(i))*P.kappa_L /(l_L1(i)*rho_L1i);
+        duL1dt(i) = ((TL1(i+1)-TL1(i))/l12_L1(i+1)-(TL1(i)-TL1im1)/l12_L1(i))*propL1.kappa /(l_L1(i)*rho_L1i);
     end   
     % ENERGY BALANCE FOR THE LIQUID IN (ST)
     duL1dt(P.nL1) = (QdotL1 - JL1*(refpropm('U','T',TL1(P.nL1),'Q',0,'PARAHYD')))/mL1;
@@ -773,7 +773,7 @@ function dxdt = LH2dxdt(P,t,x)
             Tv1im1 = Tv1(i-1);
         end
         rhov1i= refpropm('D','P',pv1/1000,'U',uv1(i),'PARAHYD');
-        duv1dt(i) = ((Tv1(i+1)-Tv1(i))/l12_V1(i+1)-(Tv1(i)-Tv1im1)/l12_V1(i))*P.kappa_v /(l_V1(i)*rhov1i);
+        duv1dt(i) = ((Tv1(i+1)-Tv1(i))/l12_V1(i+1)-(Tv1(i)-Tv1im1)/l12_V1(i))*propV1.kappa /(l_V1(i)*rhov1i);
     end
     % ENERGY BALANCE FOR THE VAPOR IN (ST)
     duv1dt(P.nV1) = (QdotV1 - Jv1*(refpropm('U','T',Tv1(P.nV1),'D',rhov1,'PARAHYD')))/mv1;    
@@ -786,7 +786,7 @@ function dxdt = LH2dxdt(P,t,x)
             TL2im1 = TL2(i-1);
         end
         rho_L2i = refpropm('D','T',TL2(i),'Q',0,'PARAHYD');
-        duL2dt(i) = ((TL2(i+1)-TL2(i))/l12_L2(i+1)-(TL2(i)-TL2im1)/l12_L2(i))*P.kappa_L /(l_L2(i)*rho_L2i);
+        duL2dt(i) = ((TL2(i+1)-TL2(i))/l12_L2(i+1)-(TL2(i)-TL2im1)/l12_L2(i))*propL2.kappa /(l_L2(i)*rho_L2i);
     end
     % ENERGY BALANCE FOR THE BULK LIQUID IN (ET)
     duL2dt(P.nL2) = (QdotL2 - JL2*(refpropm('U','T',TL2(P.nL2),'Q',0,'PARAHYD')))/mL2;
@@ -803,7 +803,7 @@ function dxdt = LH2dxdt(P,t,x)
             Tv2im1 = Tv2(i-1);
         end
         rhov2i= refpropm('D','P',pv2/1000,'U',uv2(i),'PARAHYD');
-        duv2dt(i) = ((Tv2(i+1)-Tv2(i))/l12_V2(i+1)-(Tv2(i)-Tv2im1)/l12_V2(i))*P.kappa_v /(l_V2(i)*rhov2i);
+        duv2dt(i) = ((Tv2(i+1)-Tv2(i))/l12_V2(i+1)-(Tv2(i)-Tv2im1)/l12_V2(i))*propV2.kappa /(l_V2(i)*rhov2i);
     end
     % ENERGY BALANCE FOR THE BULK VAPOR IN (ET)
     duv2dt(P.nV2) = (QdotV2 - Jv2*(refpropm('U','T',Tv2(P.nV2),'D',rhov2,'PARAHYD')))/mv2;
