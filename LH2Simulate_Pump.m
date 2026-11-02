@@ -473,7 +473,7 @@ function dxdt = LH2dxdt(P,t,x)
         beta_v = refpropm('B','D',rhov1,'U',uv1(P.nV1),'PARAHYD');
     end
     
-     P.kappa_L = refpropm('L','T',TL2(P.nL1),'Q',0,'PARAHYD');
+     P.kappa_L = refpropm('L','T',TL1(P.nL1),'Q',0,'PARAHYD');
      P.cv_L = refpropm('O','T',TL1(P.nL1),'Q',0,'PARAHYD');% Cv
      P.cp_L = refpropm('C','T',TL1(P.nL1),'Q',0,'PARAHYD');% Cp
      beta_L = refpropm('B','T',TL1(P.nL1),'Q',0,'PARAHYD');
@@ -858,7 +858,9 @@ function dxdt = LH2dxdt(P,t,x)
 
     
     % ET wall temperature
-    cw2 = 2.516173240451E-11*Tw2^6 - 2.695483209737E-08*Tw2^5 + 0.00001122596286143*Tw2^4 - 0.002261465800734*Tw2^3 + 0.214810433559*Tw2^2 - 5.41715155529*Tw2^1 + 51.75489930095; % temperature dependent specific heat capacity for stainless steel 304, in J/K
+    % Exact heat-capacity fit provenance, valid range, and differential/average
+    % interpretation remain unresolved (LH2-ISSUE-005); denominator unchanged.
+    cw2 = 2.516173240451E-11*Tw2^6 - 2.695483209737E-08*Tw2^5 + 0.00001122596286143*Tw2^4 - 0.002261465800734*Tw2^3 + 0.214810433559*Tw2^2 - 5.41715155529*Tw2^1 + 51.75489930095; % temperature dependent specific heat capacity for stainless steel 304, in J/(kg K)
     dcw2dT=6*2.516173240451E-11*Tw2^5 -5* 2.695483209737E-08*Tw2^4 + 4*0.00001122596286143*Tw2^3 -3* 0.002261465800734*Tw2^2 + 2*0.214810433559*Tw2- 5.41715155529; % derivative of the specific heat as a function of temperature.
     %P.QdotEW2 = -7.462776654302E-02*VL2^2 + 4.445867251697E+00*VL2 + 3.108170556297E+01;    % correlation for heat transfer profile of 3,300 gallon vertical Dewar at LLNL. VL2 in m^3.
     dTw2dt = (P.QdotEW2 - QdotWL2 - QdotWV2)/(P.mw2 * ( cw2 + Tw2 *dcw2dT));                % variation of wall temperature, including actual temperature dependent heat capacity

@@ -16,12 +16,15 @@ C.Tw20 = 21;                    % [K] initial wall temperature
 C.pct_hL20 = 0.01;              % initial level of liquid, measured in inH2O but reported as a fraction (i.e. 0.5 is 5 out of 10 inH2O). Value should be between >0 and 1 (=0 may trigger errors)
 C.Jboil0 = 0;                   % [kg/s] initial boiling flow of vaporizer
 C.Jtr0 = 0;                     % [kg/s] initial transmission line flow
-C.STBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
-C.ETBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
+C.STBoiloffrate = 0.015/dayTosec;                       % [s^-1] continuous fractional evaporation coefficient; nominal 1.5%/day; isolated daily loss fraction = 1-exp(-0.015).
+C.ETBoiloffrate = 0.015/dayTosec;                       % [s^-1] continuous fractional evaporation coefficient; nominal 1.5%/day; isolated daily loss fraction = 1-exp(-0.015).
+% mVap0, Tboil, and tau_vap do not specify heater energy or heating power.
+% Vaporizer energy storage, heat supply, and return-state consistency remain
+% unresolved (LH2-ISSUE-021); parameter values are preserved.
 C.mVap0 = 0;                    % [kg] initial liquid mass in vaporizer tubes
 C.Tboil = 22;                   % [K] temperature of vapor bubbles
 C.tau_vap = 0.3;                % [s] vaporizer time constant !! MAY NEED TO INCREASE THIS VALUE IF ODE SOLVER CRASHES (TOO STIFF) !!
-C.c_vap = 4e-4;                 % [] vaporizer valve flow coefficient
+C.c_vap = 4e-4;                 % [m^2] vaporizer valve effective flow area
 C.VapValveState = 0;            % initial vaporizer valve state
 C.DPipe = 2*inTom;              % [m] diameter of pipe
 C.LPipe = 10;                   % [m] transmission line length

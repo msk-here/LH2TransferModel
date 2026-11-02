@@ -91,18 +91,21 @@ LH2Model.Jtr0 = 0;                     % [kg/s] initial transmission line flow
 % Heat transfer coefficients (ST)
 LH2Model.QdotEL1 = 200*(LH2Model.VTotal1/64.5);                % [W] heat transfer from environment to liquid. Using initial value as a reference, scaled to actual volume.
 LH2Model.QdotEV1 = 40*(LH2Model.VTotal1/64.5);                 % [W] heat transfer from environment to vapor. Using initial value as a reference, scaled to actual volume.
-LH2Model.STBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
+LH2Model.STBoiloffrate = 0.015/dayTosec;                       % [s^-1] continuous fractional evaporation coefficient; nominal 1.5%/day; isolated daily loss fraction = 1-exp(-0.015).
 
 % Heat transfer coefficients (ET)
 LH2Model.QdotEW2 = -7.462776654302E-02*LH2Model.VTotal2^2 + 4.445867251697E+00*LH2Model.VTotal2 + 3.108170556297E+01;  % [W] heat transfer from environment to vessel's wall depending on the volume. Correlation from LLNL.
 LH2Model.mw2 = LH2Model.VTotal2*5000/12.5;       % [kg] mass of ET inner vessel. Using as a reference: tank of 12500L weights 5000kg
-LH2Model.ETBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
+LH2Model.ETBoiloffrate = 0.015/dayTosec;                       % [s^-1] continuous fractional evaporation coefficient; nominal 1.5%/day; isolated daily loss fraction = 1-exp(-0.015).
 
 % Vaporizer parameters, in (ST)
+% mVap0, Tboil, and tau_vap do not specify heater energy or heating power.
+% Vaporizer energy storage, heat supply, and return-state consistency remain
+% unresolved (LH2-ISSUE-021); parameter values are preserved.
 LH2Model.mVap0 = 0;                    % [kg] initial liquid mass in vaporizer tubes
 LH2Model.Tboil = 22;                   % [K] temperature of vapor bubbles
 LH2Model.tau_vap = 0.3;                % [s] vaporizer time constant !! MAY NEED TO INCREASE THIS VALUE IF ODE SOLVER CRASHES (TOO STIFF) !!
-LH2Model.c_vap = 4e-4;                 % [] vaporizer valve flow coefficient
+LH2Model.c_vap = 4e-4;                 % [m^2] vaporizer valve effective flow area
 LH2Model.VapValveState = 0;            % initial vaporizer valve state
 
 % Transmission line parameters, between (ST) and (ET)

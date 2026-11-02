@@ -74,8 +74,8 @@ LH2Model.mv10 = LH2Model.totalmass10 - LH2Model.mL10;                           
 % Initial conditions (ET)
 LH2Model.p20 = 5*barToPa;             % Changed from 3 % [Pa] initial pressure !! VALUE SHOULD BE BELOW PRESSURE RATING OR CRITICAL PRESSURE (186 psia), WHICHEVER IS LOWEST !!
 LH2Model.Tv20 = 0.1+(-1.603941638811E-11*(LH2Model.p20/psiToPa)^6 + 7.830478134841E-09*(LH2Model.p20/psiToPa)^5 - 1.549372675881E-06*(LH2Model.p20/psiToPa)^4 + 1.614567978153E-04*(LH2Model.p20/psiToPa)^3 - 9.861776990784E-03*(LH2Model.p20/psiToPa)^2 + 4.314905904166E-01*(LH2Model.p20/psiToPa)^1 + 1.559843335080E+01); % saturation temperature of vapor, from Refprop
-LH2Model.TL20 = 25;                  %changed from 25 % [K] initial liquid temperature
-LH2Model.Tw20 = 25;                  %Changed from 25 % [K] initial wall temperature     
+LH2Model.TL20 = 25;                  % [K] initial liquid temperature
+LH2Model.Tw20 = 25;                  % [K] initial wall temperature     
 LH2Model.pct_hL20 = 0.1;              % initial level of liquid, measured in inH2O but reported as a fraction (i.e. 0.5 is 5 out of 10 inH2O). Value should be between >0 and 1 (=0 may trigger errors)
 
 LH2Model.Ts20 = LH2Model.T_c*(LH2Model.p20/LH2Model.p_c)^(1/LH2Model.lambda);      % [K] initial film temperature.  From Osipov 2008, see reference in Readme file
@@ -93,18 +93,21 @@ LH2Model.Jtr0 = 0;                     % [kg/s] initial transmission line flow
 % Heat transfer coefficients (ST)
 LH2Model.QdotEL1 = 200*(LH2Model.VTotal1/64.5);                % [W] heat transfer from environment to liquid. Using initial value as a reference, scaled to actual volume.
 LH2Model.QdotEV1 = 40*(LH2Model.VTotal1/64.5);                 % [W] heat transfer from environment to vapor. Using initial value as a reference, scaled to actual volume.
-LH2Model.STBoiloffrate = 0.015/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
+LH2Model.STBoiloffrate = 0.015/dayTosec;                       % [s^-1] continuous fractional evaporation coefficient; nominal 1.5%/day; isolated daily loss fraction = 1-exp(-0.015).
 
 % Heat transfer coefficients (ET)
 LH2Model.QdotEW2 = (-7.462776654302E-02*LH2Model.VTotal2^2 + 4.445867251697E+00*LH2Model.VTotal2 + 3.108170556297E+01);  % [W] heat transfer from environment to vessel's wall depending on the volume. Correlation from LLNL.
 LH2Model.mw2 = LH2Model.VTotal2*5000/12.5/2;       % [kg] mass of ET inner vessel. Using as a reference: tank of 12500L weights 5000kg
-LH2Model.ETBoiloffrate = 0.03/dayTosec;                       % [%] flowrate as a %/s of the total liquid mass.
+LH2Model.ETBoiloffrate = 0.03/dayTosec;                       % [s^-1] continuous fractional evaporation coefficient; nominal 3%/day; isolated daily loss fraction = 1-exp(-0.03).
 
 % Vaporizer parameters, in (ST)
+% mVap0, Tboil, and tau_vap do not specify heater energy or heating power.
+% Vaporizer energy storage, heat supply, and return-state consistency remain
+% unresolved (LH2-ISSUE-021); parameter values are preserved.
 LH2Model.mVap0 = 0;                    % [kg] initial liquid mass in vaporizer tubes
 LH2Model.Tboil = 22;                   % [K] temperature of vapor bubbles
 LH2Model.tau_vap = 0.3;                % [s] vaporizer time constant !! MAY NEED TO INCREASE THIS VALUE IF ODE SOLVER CRASHES (TOO STIFF) !!
-LH2Model.c_vap = 4e-4;                 % [] vaporizer valve flow coefficient
+LH2Model.c_vap = 4e-4;                 % [m^2] vaporizer valve effective flow area
 LH2Model.VapValveState = 0;            % initial vaporizer valve state
 
 % Transmission line parameters, between (ST) and (ET)
