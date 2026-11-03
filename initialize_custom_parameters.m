@@ -24,8 +24,17 @@ for k = 1:numel(fields)
     end
 end
 for key = {'VTotal1','VTotal2','R1','R2','p10','p20','TL10','TL20','Tw20', ...
-        'DPipe','LPipe','drPipe','dE','tau_tr','tau_vap'}
-    validateattributes(P.(key{1}), {'numeric'}, {'positive','finite','real','scalar'}, mfilename, key{1});
+        'DPipe','LPipe','drPipe','dE','tau_tr','tau_vap', ...
+        'rho_L','T_c','p_c','lambda','c_L','c_p','c_v', ...
+        'tminL1','tminV1','tminL2','tminV2'}
+    validateattributes(P.(key{1}), {'numeric'}, ...
+        {'positive','finite','real','scalar'}, mfilename, key{1});
+end
+for key = {'Tv10','Tv20'}
+    if isfield(C,key{1}) && ~isempty(C.(key{1}))
+        validateattributes(P.(key{1}), {'numeric'}, ...
+            {'positive','finite','real','scalar'}, mfilename, key{1});
+    end
 end
 assert(P.initialfillfraction > 0 && P.initialfillfraction < 1 && ...
     P.pct_hL20 > 0 && P.pct_hL20 < P.TopET && P.TopET < 1, ...
@@ -90,7 +99,9 @@ elseif ~isfield(C, 'tFinal') || isempty(C.tFinal)
         P.tFinal = 0.7*0.75*0.75*60*60*(P.VTotal2/12.5)*(P.TopET-P.pct_hL20)/1.25;
     end
 end
-validateattributes(P.tFinal, {'numeric'}, {'positive','finite','real','scalar'}, mfilename, 'tFinal');
+validateattributes(P.tFinal, {'numeric'}, ...
+    {'positive','finite','real','scalar'}, mfilename, 'tFinal');
+validate_effective_parameters(P);
 P.namedetail = P.name+"_"+string(P.VTotal1)+"-"+string(P.VTotal2)+"m3_"+ ...
     string(P.p10/barToPa)+"-"+string(P.p20/barToPa)+"barInitial";
 end

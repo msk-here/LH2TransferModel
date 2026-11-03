@@ -23,6 +23,7 @@ end
 
 % Constant top-branch configuration; Eq. (50) preserves the zero-split path.
 P = Parameters_topfill_defaults(P);
+validate_effective_parameters(P);
 tf_active = P.TF_r > 0; % Exact inactive dispatch at zero ratio.
 tf_guardCount = 0;
 tf_guardMaxTrialPressure = 0;
@@ -33,10 +34,18 @@ if tf_active
     if isfield(P, 'TF_pGuardFraction')
         tf_guardFraction = P.TF_pGuardFraction;
     end
-    tf_stopFraction = 0.99;
+        tf_stopFraction = 0.99;
     if isfield(P, 'TF_pcritStopFraction')
         tf_stopFraction = P.TF_pcritStopFraction;
     end
+
+    validateattributes(tf_guardFraction, {'numeric'}, ...
+        {'real','finite','scalar','positive','<',1}, ...
+        mfilename, 'TF_pGuardFraction');
+    validateattributes(tf_stopFraction, {'numeric'}, ...
+        {'real','finite','scalar','positive','<',tf_guardFraction}, ...
+        mfilename, 'TF_pcritStopFraction');
+
     tf_pguard = tf_guardFraction*tf_pcrit;
     tf_pstop = tf_stopFraction*tf_pcrit;
 end
@@ -1098,43 +1107,119 @@ else
 end
 end
 
+    function H = cylVToH(V,R,L)
+%CYLVTOH Invert horizontal-cylinder volume without clipping inventory.
+% COMMIT_003: |Vgeom(H)-V| <= 1e-8*pi*R^2*L.
+validateattributes(V, {'numeric'}, {'real','finite','scalar'}, ...
+    mfilename, 'V');
+validateattributes(R, {'numeric'}, {'real','finite','scalar','positive'}, ...
+    mfilename, 'R');
+validateattributes(L, {'numeric'}, {'real','finite','scalar','positive'}, ...
+    mfilename, 'L');
 
-function H=cylVToH(V,R,L) 
-%Cylinder height function
-    A=pi*(R^2);s=V/L; x=0.01;error=1; b=1;
-    if s>A/2
-        sup=abs(s-A);
+V = double(V);
+R = double(R);
+L = double(L);
+Vtank = pi*R^2*L;
+validateattributes(Vtank, {'double'}, ...
+    {'real','finite','scalar','positive'}, mfilename, 'Vtank');
+validateattributes(2*R, {'double'}, ...
+    {'real','finite','scalar','positive'}, mfilename, '2R');
+
+if V < 0 || V > Vtank
+    error('LH2:CylinderVolumeDomain', ...
+        'Require 0 <= V <= pi*R^2*L; V=%.17g, Vtank=%.17g m^3.', ...
+        V, Vtank);
+end
+
+if V == 0
+    H = 0;
+    return
+elseif V == Vtank
+    H = 2*R;
+    return
+elseif V == Vtank/2
+    H = R;
+    return
+end
+
+volumeTol = 1e-8*Vtank;
+if volumeTol == 0
+    error('LH2:CylinderNumericalScale', ...
+        'Cylinder volume is too small to represent its error budget.');
+end
+
+% Solve the smaller cap: q is cap depth divided by R, in [0,1].
+upperHalf = V > Vtank/2;
+if upperHalf
+    target = (Vtank-V)/Vtank;
+else
+    target = V/Vtank;
+end
+
+lo = 0;
+hi = 1;
+maxIter = 64;
+
+for iter = 1:maxIter
+    q = lo + (hi-lo)/2;
+    capFraction = cylSegmentFraction(q);
+
+    if upperHalf
+        H = R + R*(1-q);
+        qReturned = (2*R-H)/R;
+        Vgeom = Vtank - Vtank*cylSegmentFraction(qReturned);
     else
-        sup=s;
+        H = R*q;
+        qReturned = H/R;
+        Vgeom = Vtank*cylSegmentFraction(qReturned);
     end
-    fun=@(x) sup-b*(R^2)*atan((((R^2)-(x^2))^(1/2))/x)+x*((R^2)-(x^2))^(1/2);
-    
-    while error>=1e-4
-        xold=x;  y=((R^2)-(x^2))^(1/2); f=fun(x);
-        alpha=-(((R^2)-(x^2))^(-1/2))-(((R^2)-(x^2))^(1/2))/(x^2);
-        supd=-b*alpha*(R^2)*(1/(((y/x)^2)+1))+(((R^2)-(x^2))^(1/2))-(x^2)*(((R^2)-(x^2))^(-1/2));
-        x=x-f/supd; error=abs((xold-x)/xold);
+
+    % Check the actual returned height, including reflection roundoff.
+    if isfinite(Vgeom) && abs(Vgeom-V) <= volumeTol
+        return
     end
-    if s>=A/2
-        H=R+x;
+
+    if capFraction < target
+        lo = q;
     else
-        H=R-x;
+        hi = q;
     end
-    % Newton returns a complex or NaN height within a few millilitres of
-    % exactly half full, where its step passes through x = 0. Keep its
-    % answer otherwise; in that band, use bisection on the segment area.
-    if ~isreal(H) || ~isfinite(H)
-        s = min(max(V/L,0),A); lo = 0; hi = 2*R;
-        for k = 1:60
-            h = (lo+hi)/2;
-            if R^2*acos((R-h)/R) - (R-h)*sqrt(2*R*h-h^2) < s
-                lo = h;
-            else
-                hi = h;
-            end
-        end
-        H = (lo+hi)/2;
+end
+
+error('LH2:CylinderInversionFailure', ...
+    'Cylinder inverse failed after %d iterations; residual=%.17g m^3, budget=%.17g m^3.', ...
+    maxIter, abs(Vgeom-V), volumeTol);
+end
+
+function fraction = cylSegmentFraction(q)
+% Small-cap volume / full-cylinder volume, for cap depth/R in [0,1].
+if ~isfinite(q) || q < 0 || q > 1
+    error('LH2:CylinderCapDomain', ...
+        'Normalized cylinder cap depth must lie in [0,1].');
+end
+if q == 0
+    fraction = 0;
+    return
+elseif q == 1
+    fraction = 0.5;
+    return
+end
+
+theta = 2*asin(sqrt(q/2));
+if theta <= 0.1
+    % theta - sin(2*theta)/2, evaluated without cancellation.
+    % This branch threshold selects an evaluation formula, not a tolerance.
+    term = (2/3)*theta^3;
+    area = term;
+    for j = 1:11
+        term = -term*(4*theta^2)/((2*j+2)*(2*j+3));
+        area = area + term;
     end
+else
+    area = theta - sin(theta)*cos(theta);
+end
+fraction = area/pi;
 end
 
 function pv=vaporpressure(uv,rhov)
