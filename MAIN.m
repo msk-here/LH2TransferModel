@@ -25,6 +25,10 @@ Case=3;     % '1' for running original case and parameters,
 HydrogenTransfer=1; % '0' for simulating stationary process. Simulation time of 1h.
                     % '1' for simulating transfer process. Simulation time of transfer process duration.
 
+% [] selects legacy behavior. To opt in, supply an explicit configuration
+% documented in LH2UniformCompletionConfig and the Gate 2 report.
+UniformCompletion = [];
+
 TopBottomRatio=0; % Top inlet fraction: 0 bottom, 0<r<1 hybrid, 1 top.
 TopfillMode='spray'; % 'spray' or 'jet'; used only for TopBottomRatio > 0.
             
@@ -71,12 +75,25 @@ LH2Model.transferMethod = scenario.Method;
 LH2Model.TF_mode = TopfillMode;
 LH2Model.TF_r = TopBottomRatio;
 LH2Model = Parameters_topfill_defaults(LH2Model);
+if ~isempty(UniformCompletion)
+    LH2Model.UniformCompletion = UniformCompletion;
+    LH2UniformCompletionConfig(LH2Model,scenario.isPump);
+end
 
 % 2. Run simulation
 if scenario.isPump
     Simulation= LH2Simulate_Pump;
 else
     Simulation= LH2Simulate;
+end
+
+if isfield(Simulation,'UniformCompletion')
+    % Raw port evidence and the accepted status own this operating endpoint.
+    disp(Simulation.UniformCompletion.status);
+    if SaveResults==1
+        SaveResultsFunction(LH2Model,Simulation,ResultsPath,dateandtime);
+    end
+    return
 end
 
 % 3. Extract data

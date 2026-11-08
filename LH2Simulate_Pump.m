@@ -24,6 +24,9 @@ end
 % Top-fill configuration is fixed for this run; derived solely from TF_r.
 P = Parameters_topfill_defaults(P);
 validate_effective_parameters(P);
+LH2UniformCompletionConfig(P,true);
+P.HydrogenTransfer = HydrogenTransfer; % Immutable run configuration.
+tf_pstop = NaN; % No receiver critical-pressure event when top-fill is inactive.
 tf_active = P.TF_r > 0; % Exact inactive dispatch at zero ratio.
 tf_guardCount = 0;
 tf_guardMaxTrialPressure = 0;
@@ -110,49 +113,24 @@ x0 = [  P.mL10;
         0;
 ];
 
-% declare and initialize global variables
-global ETTVentState;    % state of venting valve for (ET), 0 or 1
-ETTVentState = P.ETVentState; % initial value
-global ET_fill_complete; % flag indicating (ET) is completely full, per LH2Model.TopET criteria
-ET_fill_complete = 0;    % initial value for flag
-global ST_ready;         % flag inidicating (ST) is ready to deliver fuel, i.e. pv1 has reached delivery pressure
-ST_ready = 0;            % initial value for flag % ST is always ready with pump
-global ST_vent_complete; % flag indicating (ST) vent is complete, per LH2Model.p_ST_final criteria
-ST_vent_complete = 0;    % initial value for flag
-global ET_vent_complete; % flag indicating (ST) vent is complete, per LH2Model.p_ST_final criteria
-ET_vent_complete = 0;    % initial value for flag
-global Process_complete; % flag indicating if transfer process is complete
-Process_complete = 0;    % initial value for flag
-
-% initialize variables for ODE solver
-tstart = 0;
-tout = tstart;
-xout = x0';
-teout = [];
-xeout = [];
-ieout = [];
-tfinal=P.tFinal;
-xout=horzcat(xout,ETTVentState);
-
-function dxdt = LH2dxdt(P,t,x)
+function [dxdt,controlState,physicalFlux,ports] = LH2dxdt(P,t,x,z,observeOnly)
+    physicalFlux = struct;
+    isolated = isstruct(z) && isfield(z,'conditioningOpen');
+    inletActive = tf_active && ~isolated;
+    temperatureRegular1=true;temperatureRegular2=true;
     ratio_top_bottom = 0; % Eq. (21): independent of the user top fraction.
     
     % IMPORTANT: VALUES WITH A "0" SUFFIX ARE THE UPDATED VALUES, i.e. THE VALUES AT THE END OF THE "TIMESTEP"
     
-    disp('time, in min');
-    display(t/60);
-
-    %waitbar
-    % waitbartime(t/P.tFinal,P.waitbar); % slower waitbar with time, not very useful for estimating time with odes
-    waitbar(t/P.tFinal,P.waitbar,sprintf('Simulating, please wait... %2.2f%%',(t/P.tFinal*100)));
-
     % obtain initial state variables
     mL1 = x(1);
     uL1 = x(2:1+P.nL1);
     mv1 = x(P.nL1+2);
     uv1 = x(P.nL1+3:P.nL1+2+P.nV1);
     Ts1 = x(P.nL1+P.nV1+3);
-    if HydrogenTransfer==0      % If hydrogen transfer is deactivated, transfer massflow = 0 (Jtr=0)
+    if isolated
+        Jtr = 0; % Applied port. The integrated flow coordinate remains in x.
+    elseif P.HydrogenTransfer==0      % If hydrogen transfer is deactivated, transfer massflow = 0 (Jtr=0)
         Jtr = 0;
     else
         Jtr = x(P.nL1+P.nV1+4);
@@ -206,6 +184,7 @@ function dxdt = LH2dxdt(P,t,x)
     try
       Tv1(P.nV1) = refpropm('T','D',rhov1,'U',uv1(P.nV1),'PARAHYD'); % temperature of the bulk vapor in (ST)
     catch
+      temperatureRegular1=false;
       Tv1(P.nV1) = refpropm('T','D',rhov1,'U',fix(100*uv1(P.nV1))/100,'PARAHYD'); % temperature of the bulk vapor in (ST)
     end
 
@@ -235,7 +214,7 @@ function dxdt = LH2dxdt(P,t,x)
     end
 
     % ST pressure calculation (pv1) w/ D and U
-    pv1=vaporpressure(uv1(P.nV1),rhov1); % [Pa] vapor pressure in (ST)
+    [pv1,pressureRegular1]=vaporpressure(uv1(P.nV1),rhov1); % [Pa] vapor pressure in (ST)
     pL1 = rho_L1*P.g*hL1;                % [Pa] pressure at bottom of (ST) dues to liquid weight
     pTotal1 = pv1+pL1;                   % [Pa] total pressure in (ST)
     
@@ -299,13 +278,15 @@ function dxdt = LH2dxdt(P,t,x)
    
    % ET vapor pressure calculation with D and U
    try
-       pv2=vaporpressure(uv2(P.nV2),rhov2); % [Pa] vapor pressure in (ET)
+       [pv2,pressureRegular2]=vaporpressure(uv2(P.nV2),rhov2); % [Pa] vapor pressure in (ET)
    catch
+       pressureRegular2=false;
        disp('Non-truncation of uv2 did not converge in "Pv2". Choosing truncated value instead');
        pv2=vaporpressure(fix(100*uv2(P.nV2))/100,rhov2); % [Pa] vapor presusre in (ET)
    end
    
    if pv2==0
+       pressureRegular2=false;
        disp('!!! Pv2=0 !!!'); 
        pv2=vaporpressure(fix(100*uv2(P.nV2))/100,rhov2);
        uv2(P.nV2)= fix(100*uv2(P.nV2))/100;        
@@ -315,6 +296,7 @@ function dxdt = LH2dxdt(P,t,x)
    try
         Tv2(P.nV2) = refpropm('T','D',rhov2,'U',uv2(P.nV2),'PARAHYD'); % [K] bulk vapor temperature in (ET)\ display('truncation of uv2 did not converge in "quality2". Choosing non-truncated value instead');
     catch
+        temperatureRegular2=false;
         Tv2(P.nV2) = refpropm('T','D',rhov2,'U',fix(100*uv2(P.nV2))/100,'PARAHYD'); % [K] bulk vapor temperature in (ET)
         disp('Non-truncation of uv2 did not converge in "Tv2". Choosing truncated value instead');
     end
@@ -332,6 +314,26 @@ function dxdt = LH2dxdt(P,t,x)
    % ET liquid and total pressures
     pL2 = rho_L2*P.g*hL2; % [Pa] liquid pressure in (ET)
     pTotal2 = pv2+pL2;    % [Pa] total pressure in (ET)
+
+    % Event observer uses exactly the RHS pressure and quality-corrected height.
+    controlState = struct('p1',pv1,'p2',pv2,'hL2',hL2,'q',hL2/P.H);
+    % Pressure chart provenance uses these exact reconstructed properties.
+    indices1=[1 P.nL1+1 P.nL1+2 P.nL1+P.nV1+2];
+    indices2=[P.nL1+P.nV1+7 P.nL1+P.nV1+P.nL2+7 P.nL1+P.nV1+P.nL2+8 P.nL1+P.nV1+P.nL2+P.nV2+8];
+    regular1=pressureRegular1&&temperatureRegular1&&quality1==998&&mL1>0&&mv1>0&&Vullage1>0&&uv1(P.nV1)==x(indices1(4))&&rhov1==mv1/Vullage1;
+    regular2=pressureRegular2&&temperatureRegular2&&quality2==998&&mL2>0&&mv2>0&&Vullage2>0&&uv2(P.nV2)==x(indices2(4))&&rhov2==mv2/Vullage2;
+    controlState.chart(1)=struct('indices',indices1,'regular',regular1,'ullage',Vullage1,'quality',quality1);
+    controlState.chart(2)=struct('indices',indices2,'regular',regular2,'ullage',Vullage2,'quality',quality2);
+    if isfield(P,'UniformCompletion') && ~isempty(P.UniformCompletion)
+        values = [pv1 pv2 Tv1(P.nV1) Tv2(P.nV2) mL1 mv1 mL2 mv2 Vullage1 Vullage2];
+        controlState.conditioningDomainOK = isreal(values) && all(isfinite(values)) && ...
+            all(values > 0) && pressureRegular1 && pressureRegular2 && ...
+            temperatureRegular1 && temperatureRegular2;
+    end
+    if observeOnly
+        dxdt = [];
+        return
+    end
   
    % liquid temperature in (ET)
     for i = 1:P.nL2
@@ -382,7 +384,14 @@ function dxdt = LH2dxdt(P,t,x)
     %---------------------
 
     % obtain control inputs
-    U = LH2Control_pump(hL2,pv1,pv2, ET_fill_complete,ST_vent_complete,ETTVentState);
+    % These legacy filtered diagnostics derive only from the committed mode.
+    ST_ready = double(z.ready);
+    ET_fill_complete = double(z.final);
+    ET_Filled = double(z.fillReached);
+    ET_vent_complete = double(isfinite(z.tReceiverFirst));
+    ST_vent_complete = double(isfinite(z.tSourceFirst));
+    Process_complete = 0; % No approved physical-completion budget.
+    U = LH2Control_pump(P,z,pv1,pv2);
 
     % calculate transmission line parameters
     apipe = 2*pi*(P.DPipe/2)^2*sqrt(rho_L1*P.DPipe/2/P.LPipe/P.f);
@@ -397,33 +406,10 @@ function dxdt = LH2dxdt(P,t,x)
 %          aeff =  ((lambdaE*alphaE)^-2 + apipe^-2 )^(-1/2);
 %     end
        
-    if t >= 5
-        ST_ready = 1;
-    end
-   
-    if hL2 >= P.TopET * P.H  % stopping criteria for (ET) filling
-        ET_fill_complete = 1;
-        ET_Filled = 1;
-    else 
-        ET_Filled = 0;
-    end
-
-    % Check whether vent from (ET) is complete
-    if pv2 <= P.p_ET_final && ET_Filled > 0
-        ET_vent_complete = 1;
-    end
-
-    % this is to check whether vent from (ST) is complete
-    if pv1 <= P.p_ST_final && ET_Filled > 0
-        ST_vent_complete = 1;
-    end
-
-    % Check if transfer process is complete
-    if ST_vent_complete > 0 && ET_vent_complete > 0
-        Process_complete = 1;
-    end
-
-    if HydrogenTransfer==0      % If hydrogen transfer is deactivated, transfer massflow = 0 (Jtr=0)
+    if isolated
+        Jtr0 = 0;
+        dJtrdt = -x(P.nL1+P.nV1+4)/P.tau_tr;
+    elseif P.HydrogenTransfer==0
         Jtr0 = 0;
         dJtrdt = 0;
     
@@ -441,28 +427,33 @@ function dxdt = LH2dxdt(P,t,x)
     % vaporizer in (ST)
     %---------------------
     % vaporizer holds tank 1 above p_ST_min (article sect. 3.2).
-    Jvap = max(0,P.c_vap*U.lambdaV*dsqrt(2*rho_L1*(pTotal1-P.p_atm)));
-    if mVap<=0
-        Jboil0 = 0;
-        Jboil = max(0,Jboil);
-        dmVapdt = max(0,Jvap - Jboil);
+    if isolated
+        Jvap = 0;
+        Jboil = 0;
+        dmVapdt = 0;
+        dJboildt = 0;
     else
-        Jboil0 = Jvap;
-        dmVapdt = Jvap - Jboil;
+        Jvap = max(0,P.c_vap*U.lambdaV*dsqrt(2*rho_L1*(pTotal1-P.p_atm)));
+        if mVap<=0
+            Jboil0 = 0;
+            Jboil = max(0,Jboil);
+            dmVapdt = max(0,Jvap - Jboil);
+        else
+            Jboil0 = Jvap;
+            dmVapdt = Jvap - Jboil;
+        end
+        dJboildt = (Jboil0 - Jboil)/P.tau_vap;
     end
-    dJboildt = (Jboil0 - Jboil)/P.tau_vap;
-    P.VapValveState = U.lambdaV;
+
     
-    % determine ST vent valve state
-    P.STVentState = U.STVentState;% store STVentState value for next iteration
+    % Vent commands are pure outputs; physical memory is driver-owned.
     
     %----------------------
     % vent flows
     %----------------------
     % compute vapor flow for ST end ET vents
-    ETTVentState= U.ETVentState;
-    Jvvalve1 = P.STVentState*gasFlow(P.S_valve1,P.gamma_,rhov1,pv1,P.p_atm); 
-    Jvvalve2 = ETTVentState * gasFlow(P.S_valve2,P.gamma_,rhov2,pv2,P.p_atm);
+    Jvvalve1 = U.STVentState*gasFlow(P.S_valve1,P.gamma_,rhov1,pv1,P.p_atm);
+    Jvvalve2 = U.ETVentState * gasFlow(P.S_valve2,P.gamma_,rhov2,pv2,P.p_atm);
     
     %---------------------
     % heat transfer between the saturated film and the vapor and liquid phases in (ST)
@@ -656,7 +647,7 @@ function dxdt = LH2dxdt(P,t,x)
     Jv1 = Jboil - Jvvalve1 - Jcd1 + Jevap1;                      % variation of mass of vapor in (ST)
     JL1 = -Jtr - Jvap + Jcd1 - Jevap1;                           % variation of mass of liquid in (ST)
         
-    if ~tf_active
+    if ~inletActive
     Jv2 = (ratio_top_bottom) * Jtr  - Jvvalve2 - Jcd2 + Jevap2; % variation of mass of vapor in (ET)
     JL2 = (1-ratio_top_bottom) * Jtr + Jcd2 - Jevap2;         % variation of mass of liquid in (ET)
     end
@@ -664,32 +655,42 @@ function dxdt = LH2dxdt(P,t,x)
     %---------------------
     % Heat gains at the pump
     %---------------------
-    try
-        str_L= refpropm('S','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD|liquid');
-        htr_L= refpropm('H','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD|liquid');
-    catch
-        str_L=refpropm('S','T',TL1(P.nL1),'Q',0,'PARAHYD');
-        htr_L=refpropm('H','T',TL1(P.nL1),'Q',0,'PARAHYD');
-    end 
-    Pumphisen=refpropm('H','P',pv2/1000,'S',str_L,'hydrogen'); % isentropic compression
-    PumpPisen=Jtr0*(Pumphisen-htr_L);
-    if pv2>=pv1 % Pump power is positive (compression), efficiency adds consumed power
-        PumpPower=PumpPisen/P.PumpIsenEff;
-        htr_L_real=(Pumphisen-htr_L)/P.PumpIsenEff+htr_L;
-    else    % Pump power is negative (expansion), efficiency reduces "generated power", adds inefficiencies to expansion 
-        PumpPower=PumpPisen*P.PumpIsenEff;
-        htr_L_real=(Pumphisen-htr_L)*P.PumpIsenEff+htr_L;
+    if isolated
+        htr_L = 0;
+        htr_L_real = 0;
+        PumpPower = 0;
+        QdotPump = 0;
+        if strcmp(P.UniformCompletion.passivePumpHeat,'retain')
+            QdotPump = P.PumpHeatCond;
+        end
+    else
+        try
+            str_L= refpropm('S','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD|liquid');
+            htr_L= refpropm('H','T',TL1(P.nL1),'P',pv1/1000,'PARAHYD|liquid');
+        catch
+            str_L=refpropm('S','T',TL1(P.nL1),'Q',0,'PARAHYD');
+            htr_L=refpropm('H','T',TL1(P.nL1),'Q',0,'PARAHYD');
+        end 
+        Pumphisen=refpropm('H','P',pv2/1000,'S',str_L,'hydrogen'); % isentropic compression
+        PumpPisen=Jtr0*(Pumphisen-htr_L);
+        if pv2>=pv1 % Pump power is positive (compression), efficiency adds consumed power
+            PumpPower=PumpPisen/P.PumpIsenEff;
+            htr_L_real=(Pumphisen-htr_L)/P.PumpIsenEff+htr_L;
+        else    % Pump power is negative (expansion), efficiency reduces "generated power", adds inefficiencies to expansion 
+            PumpPower=PumpPisen*P.PumpIsenEff;
+            htr_L_real=(Pumphisen-htr_L)*P.PumpIsenEff+htr_L;
+        end
+        PumpLosses=PumpPower-PumpPisen;
+        QdotPump=P.PumpHeatCond;   % losses are already inside htr_L_real (article eq. 1); adding PumpLosses here counted them twice
+        % QdotPump=P.PumpHeatCond+P.PumpHeatGain*(Jtr0*3600/1000); % Fixed heat gain (conduction) + variable proportional to flow rate (inefficiencies)
     end
-    PumpLosses=PumpPower-PumpPisen;
-    QdotPump=P.PumpHeatCond;   % losses are already inside htr_L_real (article eq. 1); adding PumpLosses here counted them twice
-    % QdotPump=P.PumpHeatCond+P.PumpHeatGain*(Jtr0*3600/1000); % Fixed heat gain (conduction) + variable proportional to flow rate (inefficiencies)
 
 
     %---------------------
     % pdV work, ST and ET
     %---------------------
     pdV1 = -pv1*(JL1/rho_L1);
-    if ~tf_active
+    if ~inletActive
     pdV2 = -pv2*(JL2/rho_L2);
     end
     
@@ -748,7 +749,7 @@ function dxdt = LH2dxdt(P,t,x)
     rhotr = rho_L1 ;                    % assumed density in the transfer line
     vtr = Jtr/(pi*(0.5*P.dE)^2)/rhotr;  % velocity in the transfer line
 
-    if tf_active
+    if inletActive
         J_bot = (1-P.TF_r)*Jtr; % Eq. (47): vtr still uses total line flow.
         sTF = struct('h_in', htr_L, 'v_in', vtr, ...
             'p_v', pv2, 'T_v', Tv2(P.nV2), 'rho_v', rhov2, ...
@@ -773,7 +774,7 @@ function dxdt = LH2dxdt(P,t,x)
    % Heat flows to vapor and liquid phases in (ET)
    %----------------------------------------------------- 
    % heat flow to vapor phase in (ET)
-    if tf_active
+    if inletActive
         QdotV2 = QdotWV2-QdotVS2-pdV2 ...
             + TF.H_top_vap-TF.Q_vap_to_top ...
             - Jvvalve2*(hvalve2+0.5*vv2^2) ...
@@ -891,7 +892,7 @@ function dxdt = LH2dxdt(P,t,x)
     MMM = QdotWV2;
     NNN = - QdotVS2;
     OOO = pdV2;   
-    if tf_active
+    if inletActive
         PPP = TF.H_top_vap; % [W] Signed top vapor enthalpy port; heat is separate.
     else
         PPP =  ratio_top_bottom * Jtr * (htr_L+0.5*vtr^2-qh2); % Inactive baseline (zero).
@@ -900,7 +901,7 @@ function dxdt = LH2dxdt(P,t,x)
     RRR = - Jcd2*hcd2;
     SSS = QdotWL2;
     TTT = - QdotLS2;
-    if tf_active
+    if inletActive
         UUU = J_bot*(htr_L+0.5*vtr^2)+TF.H_top_liq; % [W] Combined liquid inlet energy.
     else
         UUU = + (1-ratio_top_bottom)*Jtr*(htr_L+0.5*vtr^2); % Bottom-fill inlet energy.
@@ -919,7 +920,7 @@ function dxdt = LH2dxdt(P,t,x)
     ZGG = ET_Filled;
     ZHH = ET_vent_complete;
     ZII = ST_vent_complete;
-    if tf_active
+    if inletActive
         ZJJ = TF.Q_vap_to_top; % [W] Signed heat leaving vapor for the top stream.
         ZKK = TF.J_top_vap; % [kg/s] Signed flash plus flight vapor inflow.
     else
@@ -989,70 +990,50 @@ function dxdt = LH2dxdt(P,t,x)
     dxdt(P.nL1+P.nV1+P.nL2+P.nV2+50) = 1*(ZLL-x(P.nL1+P.nV1+P.nL2+P.nV2+50));
     dxdt(P.nL1+P.nV1+P.nL2+P.nV2+51) = 1*(ZMM-x(P.nL1+P.nV1+P.nL2+P.nV2+51));
 
+    physicalFlux=struct('sourceMass',Jvvalve1,'receiverMass',Jvvalve2, ...
+        'sourceEnthalpyOut',Jvvalve1*hvalve1,'receiverEnthalpyOut',Jvvalve2*hvalve2, ...
+        'sourceKineticOut',Jvvalve1*0.5*vv1^2,'receiverKineticOut',Jvvalve2*0.5*vv2^2);
+    if nargout >= 4
+        ports = physicalFlux;
+        ports.pressurePa = [pv1 pv2];
+        ports.liquidTemperatureK = [TL1(P.nL1) TL2(P.nL2)];
+        ports.vaporTemperatureK = [Tv1(P.nV1) Tv2(P.nV2)];
+        ports.phaseMassKg = [mL1 mv1 mL2 mv2];
+        ports.vaporizerBufferKg = mVap;
+        ports.storedTransfer = x(P.nL1+P.nV1+4);
+        ports.storedVaporizerReturn = x(P.nL1+P.nV1+6);
+        ports.appliedTransfer = Jtr;
+        ports.requestedTransfer = Jtr0;
+        ports.transferEnthalpy = Jtr*[htr_L_ST htr_L];
+        ports.transferKinetic = Jtr*0.5*vtr^2;
+        ports.vaporizerMass = [Jvap Jboil];
+        ports.vaporizerEnergy = [Jvap*htr_L_ST Jboil*hboil];
+        ports.pumpDrive = ST_ready ~= 0 && Jtr0 ~= 0;
+        ports.pumpPower = PumpPower;
+        ports.appliedPumpWork = Jtr*(htr_L-htr_L_ST);
+        ports.pumpConduction = QdotPump;
+        ports.ambientHeat = [P.QdotEL1 P.QdotEV1 P.QdotEW2];
+        ports.receiverWallHeat = [QdotWL2 QdotWV2];
+    end
     % must return a column vector
     dxdt = dxdt';
 
-    % update model structure (to store vent valve state)
-    assignin('base','LH2Model',P);
+    % No workspace or controller-memory writes during speculative evaluations.
    
 end
 
-%% ODE SOLVER
-
-while tout(end) < P.tFinal
-    %Solve until the first terminal event
-        refine = 4;
-        if tf_active
-            VentEvent = @(t,x) VentEvents(x,P,ETTVentState,tf_pstop);
-        else
-            VentEvent = @(t,x) VentEvents(x,P,ETTVentState);
-        end
-
-        try
-            nt = length(t);
-            options = odeset('MaxStep',1,'RelTol',P.relTol,'Events',VentEvent,'OutputSel',1,'Refine',refine,'InitialStep',t(nt)-t(nt-refine),'MaxStep',t(nt)-t(1));
-        catch
-            options = odeset('MaxStep',1,'RelTol',P.relTol,'Events',VentEvent,'OutputSel',1,'Refine',refine);
-        end
-        
-        if odesolver==1
-            rhs = @(t,x) LH2dxdt(P,t,x);
-            [t,x,te,xe,ie]= ode45(rhs,[tstart,tfinal],x0,options);
-        
-        else
-            rhs = @(t,x) LH2dxdt(P,t,x);
-            [t,x,te,xe,ie]= ode15s(rhs,[tstart,tfinal],x0,options);
-        end
-  
-        % Accumulate output.  This could be passed out as output arguments.
-        nt = length(t);
-        tout = [tout; t(2:nt)];
-        ventstate =  ETTVentState * ones(nt,1);
-        x = horzcat(x, ventstate); % concatenate output results from the ODE to the vent-state on (ET), 0 or 1
-        xout = [xout; x(2:nt,:)];  % concatenate output results with previous results on different time windows.
-        teout = [teout; te];       % Events at tstart are never reported.
-        xeout = [xeout; xe];
-        ieout = [ieout; ie];
-
-        x0=x(end,:)';
-        x0=x0(1:end-1); % last column (ETTVentState) is removed
-   
-        tstart = t(nt);
-        if tf_active
-            criticalEvent = find(ie == 3, 1, 'first');
-            if ~isempty(criticalEvent)
-                tf_stopReason = sprintf('ET pressure reached %.15g of p_crit at t = %.15g s', ...
-                    tf_stopFraction, te(criticalEvent));
-                break;
-            end
-            if any(ie == 2) || (ETTVentState > 0 && any(ie == 1))
-                ETTVentState = abs(ETTVentState - 1);
-            end
-        else
-            ETTVentState = abs(ETTVentState - 1);
-        end
+function state = observeControlState(t,x)
+    [~,state] = LH2dxdt(P,t,x,[],true);
 end
-    
+
+%% ODE SOLVER: only accepted events commit controller memory.
+controlRun = LH2ControlEngine('run',P,x0,true, ...
+    P.HydrogenTransfer,tf_pstop,odesolver, ...
+    @(t,x,z) LH2dxdt(P,t,x,z,false),@observeControlState);
+tout = controlRun.t;
+xout = [controlRun.x,controlRun.vent];
+tf_stopReason = controlRun.stopReason;
+
     % close waitbar
     close(P.waitbar);
     disp('Done with ODE solver');
@@ -1136,7 +1117,28 @@ end
         data.ProcComp(end)=1;
     end
 
+    % Raw accepted-state diagnostics take precedence over legacy filters.
+    data.ControlHistory = controlRun.control;
+    data.ControlEvents = controlRun.history;
+    data.ControlEventNames = controlRun.eventNames;
+    data.ControlSolverOptions = controlRun.solverOptions;
+    data.ControlSolver = controlRun.solver;
+    data.FinalControlMode = controlRun.finalMode;
+    data.MethodRSegments = controlRun.methodRSegments;
+    data.MethodRFailure = controlRun.methodRFailure;
+    data.CompletionBudgetSpecified = controlRun.completionBudgetSpecified;
+    data.PhysicalCompletionVerified = false;
     data.StopReason = tf_stopReason;
+    if isfield(controlRun,'uniform')
+        data.UniformCompletion = controlRun.uniform;
+        data.RawControlStates = controlRun.x;
+        data.StoredTransferFlow = data.Jtr;
+        data.StoredVaporizerReturn = data.Jboil;
+        data.Jtr = NaN(size(data.Jtr));
+        if ~isempty(controlRun.uniform.ports)
+            data.Jtr = reshape([controlRun.uniform.ports.appliedTransfer],[],1);
+        end
+    end
     data.TF_guardCount = tf_guardCount;
     data.TF_guardMaxTrialPressure = tf_guardMaxTrialPressure; % [Pa]
     fprintf('Stop reason: %s\n', data.StopReason);
@@ -1282,16 +1284,19 @@ end
 fraction = area/pi;
 end
 
-function pv=vaporpressure(uv,rhov)
+function [pv,regular]=vaporpressure(uv,rhov)
+regular=true;
 % new function for vapor pressure, based on internal energy and density
   try
        quality=refpropm('q','D',rhov,'U',uv,'PARAHYD');
   catch
+      regular=false;
       uv=fix(100*uv)/100;
       try
           quality=refpropm('q','D',rhov,'U',fix(100*uv)/100,'PARAHYD');
           disp('Non-truncation of uv did not converge in "quality". Choosing truncated value instead');
       catch
+      regular=false;
           quality=refpropm('q','D',fix(100*rhov)/100,'U',fix(100*uv)/100,'PARAHYD');
           rhov=fix(100*rhov)/100;
         %uv=fix(100*uv)/100;
@@ -1306,30 +1311,3 @@ function pv=vaporpressure(uv,rhov)
         pv = refpropm('P','D',rhov,'U',uv,'PARAHYD')*1e3;% return value in Pa
     end
 end
-
-
-function [value,isterminal,direction] = VentEvents(x,P,ventstate,p_stop)
-% Stops ODE solver every time the state of the vent valve in (ET) changes
-rho_L22= -5.12074746E-07*(x(P.nL1+P.nV1+P.nL2+7)/1000)^3 - 1.56628367E-05*(x(P.nL1+P.nV1+P.nL2+7)/1000)^2 - 1.18436797E-01*(x(P.nL1+P.nV1+P.nL2+7)/1000) + 7.06218354E+01;
-VL22 = x(P.nL1+P.nV1+7)/rho_L22;
-Vullage22 = P.VTotal2-VL22;
-rhov22 = x(P.nL1+P.nV1+P.nL2+8)/Vullage22;
-p22=vaporpressure(x(P.nL1+P.nV1+P.nL2+P.nV2+8),rhov22);
-%value = [p22-P.p_ET_low; p22-P.p_ET_high; p22-P.p_ET_final]; % The value that we want to be zero
-value = [p22-P.p_ET_low; p22-P.p_ET_high]; % The value that we want to be zero
-if ventstate > 0          % this is to make sure the vent valve does not open when the pressure is dropping in ET
-    isterminal = [1 ; 1];  % Halt integration if = 1. If venting is taking place, always halt integration  
-else
-    isterminal = [0 ; 1];  % Halt integration if = 1. If no venting, then halt integration only if venting pressure is reached
-end
-
-direction =  [-1; +1];     % value of +1 locates only zeros where the event function is increasing, and -1 locates only zeros where the event function is decreasing.
-
-if nargin > 3
-    value = [value; p22-p_stop];
-    isterminal = [isterminal; 1];
-    direction = [direction; +1];
-end
-
-end
-
